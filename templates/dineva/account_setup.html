@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Set Up Account | Dineva{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="container">
+        <div class="auth-panel">
+            <p class="eyebrow text-success">Dineva account</p>
+            {% if validlink %}
+                <h1>Create your password</h1>
+                <p class="auth-intro">Choose a secure password to finish setting up your account.</p>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<div class="form-help">{{ field.help_text|safe }}</div>{% endif %}
+                            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endfor %}
+                    <button class="btn btn-dark w-100" type="submit">Set password</button>
+                </form>
+            {% else %}
+                <h1>Setup link unavailable</h1>
+                <p class="auth-intro">This account setup link is invalid or has already been used.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

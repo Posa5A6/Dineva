@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Super Admin Dashboard | Dineva{% endblock %}
+
+{% block content %}
+<section class="dashboard-section">
+    <div class="container">
+        <div class="dashboard-heading">
+            <div>
+                <p class="eyebrow text-success">Dineva platform</p>
+                <h1>Super Admin</h1>
+                <p>{{ request.user.name }} · {{ request.user.email }}</p>
+            </div>
+            <form method="post" action="{% url 'dineva:logout' %}">
+                {% csrf_token %}
+                <button class="btn btn-outline-dark" type="submit">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout
+                </button>
+            </form>
+        </div>
+
+        <nav class="management-nav" aria-label="Super Admin management">
+            <a href="{% url 'dineva:restaurants' %}">Restaurants</a>
+            <a href="{% url 'dineva:restaurant-add' %}">Add Restaurant</a>
+            <a href="{% url 'dineva:owner-add' %}">Add Owner</a>
+            <a href="{% url 'dineva:staff-add' %}">Add Staff</a>
+        </nav>
+
+        <div class="stats-grid" aria-label="Platform totals">
+            <div class="stat-item"><span>Restaurants</span><strong>{{ restaurant_count }}</strong></div>
+            <div class="stat-item"><span>Owners</span><strong>{{ owner_count }}</strong></div>
+            <div class="stat-item"><span>Waiters</span><strong>{{ waiter_count }}</strong></div>
+            <div class="stat-item"><span>Kitchen Staff</span><strong>{{ kitchen_count }}</strong></div>
+        </div>
+
+        <div class="section-toolbar">
+            <div>
+                <p class="eyebrow text-success">Directory</p>
+                <h2 id="restaurants">Restaurants</h2>
+            </div>
+            <a class="btn btn-dark" href="{% url 'dineva:restaurant-add' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add Restaurant</a>
+        </div>
+
+        <div class="table-responsive restaurant-table-wrap">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Restaurant Name</th>
+                        <th>Contact</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Owners</th>
+                        <th>Staff</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for restaurant in restaurants %}
+                        <tr>
+                            <td class="fw-semibold">{{ restaurant.name }}</td>
+                            <td>{{ restaurant.contact }}</td>
+                            <td>{{ restaurant.email }}</td>
+                            <td>{% if restaurant.is_active %}<span class="status status-active">Active</span>{% else %}<span class="status status-inactive">Inactive</span>{% endif %}</td>
+                            <td>{{ restaurant.owner_count }}</td>
+                            <td>{{ restaurant.staff_count }}</td>
+                            <td><a href="{% url 'dineva:owner-add' %}" class="table-action">Add owner</a></td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7" class="empty-state">No restaurants have been added.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

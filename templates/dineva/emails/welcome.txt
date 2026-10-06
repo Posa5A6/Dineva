@@ -1,0 +1,16 @@
+Welcome to Dineva!
+
+Hello {{ user.name }},
+
+Your Dineva account has been successfully created.
+
+Registered email: {{ user.email }}
+Username: {{ user.username }}
+Restaurant: {{ restaurant.name }}
+Role: {{ role_label }}
+{{ public_id_label }}: {{ user.public_id }}
+
+You will receive a separate secure email to create your password.
+
+Regards,
+Dineva Team

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Add Restaurant | Dineva{% endblock %}
+
+{% block content %}
+<section class="management-form-section">
+    <div class="container form-shell">
+        <div class="form-heading">
+            <p class="eyebrow text-success">Platform management</p>
+            <h1>Add Restaurant</h1>
+            <p>Create a restaurant workspace on Dineva.</p>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="management-form" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="{% if field.name == 'is_active' %}form-check{% else %}mb-3{% endif %}">
+                    {% if field.name == 'is_active' %}{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+                    {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+            <div class="form-actions">
+                <button class="btn btn-dark" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add Restaurant</button>
+                <a class="btn btn-outline-secondary" href="{% url 'dineva:dashboard' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

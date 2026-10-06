@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dineva | Restaurant Operations{% endblock %}
+
+{% block content %}
+<section class="hero" style="--hero-image: url('{% static 'dineva/images/restaurant-operations-hero.png' %}');">
+    <div class="hero-shade" aria-hidden="true"></div>
+    <div class="container hero-content">
+        <p class="eyebrow">Restaurant management, connected</p>
+        <h1>Dineva</h1>
+        <p class="hero-copy">Keep tables, orders, kitchen progress, and payments moving together from one dependable workspace.</p>
+        <div class="d-flex flex-wrap gap-3">
+            <a class="btn btn-light btn-lg" href="#platform">Explore the platform <i class="bi bi-arrow-down" aria-hidden="true"></i></a>
+            <a class="btn btn-outline-light btn-lg" href="{% url 'dineva:login' %}">Staff login</a>
+        </div>
+    </div>
+</section>
+
+<section class="platform-section" id="platform">
+    <div class="container">
+        <div class="section-heading">
+            <p class="eyebrow text-success">One operational picture</p>
+            <h2>Built around the rhythm of service</h2>
+            <p>From the first seated guest to the final payment, Dineva keeps every handoff clear.</p>
+        </div>
+        <div class="row g-4" id="operations">
+            <div class="col-md-4">
+                <article class="feature-card h-100">
+                    <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+                    <h3>Floor control</h3>
+                    <p>See table availability and active dining sessions without losing the room’s pace.</p>
+                </article>
+            </div>
+            <div class="col-md-4">
+                <article class="feature-card h-100">
+                    <i class="bi bi-fire" aria-hidden="true"></i>
+                    <h3>Kitchen flow</h3>
+                    <p>Track each item from pending to served while preserving clear staff accountability.</p>
+                </article>
+            </div>
+            <div class="col-md-4">
+                <article class="feature-card h-100">
+                    <i class="bi bi-receipt" aria-hidden="true"></i>
+                    <h3>Reliable checkout</h3>
+                    <p>Keep historical prices and payment attempts tied to the correct restaurant session.</p>
+                </article>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="access-section" id="login">
+    <div class="container d-md-flex align-items-center justify-content-between gap-4">
+        <div>
+            <p class="eyebrow">Dineva workspace</p>
+            <h2>Ready for the next service.</h2>
+        </div>
+        <a class="btn btn-light btn-lg" href="{% url 'dineva:login' %}"><i class="bi bi-lock" aria-hidden="true"></i> Super Admin login</a>
+    </div>
+</section>
+{% endblock %}

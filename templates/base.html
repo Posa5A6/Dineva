@@ -1,0 +1,62 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Dineva restaurant operations platform">
+    <title>{% block title %}Dineva{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'dineva/css/home.css' %}" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="navbar navbar-expand-lg bg-white" aria-label="Main navigation">
+            <div class="container">
+                <a class="navbar-brand" href="{% url 'dineva:home' %}">Dineva<span>.</span></a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
+                        <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#platform">Platform</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#operations">Operations</a></li>
+                        {% if user.is_authenticated %}
+                            {% if user.is_superuser and user.role == "SUPERADMIN" %}
+                                <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:dashboard' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a></li>
+                            {% endif %}
+                            <li class="nav-item">
+                                <form method="post" action="{% url 'dineva:logout' %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-outline-dark" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</button>
+                                </form>
+                            </li>
+                        {% else %}
+                            <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:login' %}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    {% if messages %}
+        <div class="container message-stack" aria-live="polite">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <main>{% block content %}{% endblock %}</main>
+    <footer class="site-footer">
+        <div class="container d-flex flex-column flex-md-row justify-content-between gap-2">
+            <span>Dineva</span>
+            <span>Restaurant operations, kept in sync.</span>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
