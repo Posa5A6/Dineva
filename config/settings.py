@@ -61,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'dineva.middleware.AccountEligibilityMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -156,6 +157,28 @@ STATIC_URL = 'static/'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "private": {
+        "BACKEND": "dineva.storage.PrivateFileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+DINEVA_PUBLIC_BASE_URL = os.environ.get(
+    "DINEVA_PUBLIC_BASE_URL",
+    "http://127.0.0.1:8000",
+).rstrip("/")
+EMAIL_TIMEOUT = int(os.environ.get("DINEVA_EMAIL_TIMEOUT", "10"))
+
+AUTHENTICATION_BACKENDS = ["dineva.backends.DinevaModelBackend"]
+LOGIN_URL = "dineva:login"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Add Restaurant | Dineva{% endblock %}
+{% block title %}{% if mode == "edit" %}Edit{% else %}Add{% endif %} Restaurant | Dineva{% endblock %}
 
 {% block content %}
 <section class="management-form-section">
     <div class="container form-shell">
         <div class="form-heading">
             <p class="eyebrow text-success">Platform management</p>
-            <h1>Add Restaurant</h1>
-            <p>Create a restaurant workspace on Dineva.</p>
+            <h1>{% if mode == "edit" %}Edit{% else %}Add{% endif %} Restaurant</h1>
+            <p>{% if mode == "edit" %}Update this restaurant workspace.{% else %}Create a restaurant workspace on Dineva.{% endif %}</p>
         </div>
         <form method="post" enctype="multipart/form-data" class="management-form" novalidate>
             {% csrf_token %}
@@ -19,7 +19,7 @@
                 </div>
             {% endfor %}
             <div class="form-actions">
-                <button class="btn btn-dark" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add Restaurant</button>
+                <button class="btn btn-dark" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Save Restaurant</button>
                 <a class="btn btn-outline-secondary" href="{% url 'dineva:dashboard' %}">Cancel</a>
             </div>
         </form>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.user.name }} | Dineva{% endblock %}
+
+{% block content %}
+<section class="dashboard-section"><div class="container">
+    <div class="dashboard-heading"><div><p class="eyebrow text-success">Employee details</p><h1>{{ employee.user.name }}</h1><p>{{ employee.get_role_display }} · {{ employee.public_id }}</p></div><img src="{% url 'dineva:employee-photo' employee.user_id %}" alt="{{ employee.user.name }}" width="96" height="96" class="rounded-circle object-fit-cover"></div>
+    <dl class="row">
+        <dt class="col-sm-3">Username</dt><dd class="col-sm-9">{{ employee.user.username }}</dd>
+        <dt class="col-sm-3">Email</dt><dd class="col-sm-9">{{ employee.user.email }}</dd>
+        <dt class="col-sm-3">Contact</dt><dd class="col-sm-9">{{ employee.contact }}</dd>
+        <dt class="col-sm-3">Address</dt><dd class="col-sm-9">{{ employee.address }}</dd>
+        <dt class="col-sm-3">Restaurant</dt><dd class="col-sm-9">{{ employee.restaurant.name }}</dd>
+        <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{% if employee.user.is_active %}Active{% else %}Inactive{% endif %}</dd>
+        {% if can_view_proof %}<dt class="col-sm-3">ID Proof</dt><dd class="col-sm-9">{{ employee.id_proof.get_proof_type_display }} · <a href="{% url 'dineva:id-proof-download' employee.user_id %}">Open protected document</a></dd>{% endif %}
+    </dl>
+    <div class="form-actions">
+        {% if user.profile.role == "SUPERADMIN" %}<a class="btn btn-dark" href="{% url 'dineva:employee-edit' employee.user_id %}">Edit details</a>{% else %}<a class="btn btn-dark" href="{% url 'dineva:owner-staff-photo' employee.user_id %}">Update photo</a>{% endif %}
+        <form method="post" action="{% if user.profile.role == 'SUPERADMIN' %}{% url 'dineva:employee-status' employee.user_id %}{% else %}{% url 'dineva:owner-staff-status' employee.user_id %}{% endif %}" class="d-inline">{% csrf_token %}<button class="btn btn-outline-dark" type="submit">{% if employee.user.is_active %}Deactivate{% else %}Reactivate{% endif %}</button></form>
+    </div>
+</div></section>
+{% endblock %}

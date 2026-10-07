@@ -21,6 +21,7 @@ htmlcov/
 *.log
 db.sqlite3
 media/
+private_media/
 staticfiles/
 
 # IDE and operating-system files

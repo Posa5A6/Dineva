@@ -23,8 +23,10 @@
                         <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#platform">Platform</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#operations">Operations</a></li>
                         {% if user.is_authenticated %}
-                            {% if user.is_superuser and user.role == "SUPERADMIN" %}
+                            {% if user.is_superuser and user.profile.role == "SUPERADMIN" %}
                                 <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:dashboard' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a></li>
+                            {% elif user.profile.role == "OWNER" %}
+                                <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:owner-staff-list' %}"><i class="bi bi-people" aria-hidden="true"></i> Staff</a></li>
                             {% endif %}
                             <li class="nav-item">
                                 <form method="post" action="{% url 'dineva:logout' %}">

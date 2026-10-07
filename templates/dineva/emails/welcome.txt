@@ -1,16 +1,18 @@
-Welcome to Dineva!
+{% autoescape off %}Welcome to Dineva
 
 Hello {{ user.name }},
 
-Your Dineva account has been successfully created.
+Your Dineva account has been created successfully.
 
-Registered email: {{ user.email }}
+Name: {{ user.name }}
 Username: {{ user.username }}
+Email: {{ user.email }}
 Restaurant: {{ restaurant.name }}
 Role: {{ role_label }}
-{{ public_id_label }}: {{ user.public_id }}
+{{ public_id_label }}: {{ profile.public_id }}
+Temporary password: {{ generated_password }}
+Login: {{ login_url }}
 
-You will receive a separate secure email to create your password.
+Please change your password after logging in. Do not share your password with anyone.
 
-Regards,
-Dineva Team
+Dineva Team{% endautoescape %}

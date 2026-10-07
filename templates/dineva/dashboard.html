@@ -22,7 +22,9 @@
         <nav class="management-nav" aria-label="Super Admin management">
             <a href="{% url 'dineva:restaurants' %}">Restaurants</a>
             <a href="{% url 'dineva:restaurant-add' %}">Add Restaurant</a>
+            <a href="{% url 'dineva:owner-list' %}">Owners</a>
             <a href="{% url 'dineva:owner-add' %}">Add Owner</a>
+            <a href="{% url 'dineva:staff-list' %}">Staff</a>
             <a href="{% url 'dineva:staff-add' %}">Add Staff</a>
         </nav>
 
@@ -63,7 +65,13 @@
                             <td>{% if restaurant.is_active %}<span class="status status-active">Active</span>{% else %}<span class="status status-inactive">Inactive</span>{% endif %}</td>
                             <td>{{ restaurant.owner_count }}</td>
                             <td>{{ restaurant.staff_count }}</td>
-                            <td><a href="{% url 'dineva:owner-add' %}" class="table-action">Add owner</a></td>
+                            <td>
+                                <a href="{% url 'dineva:restaurant-edit' restaurant.id %}" class="table-action">Edit</a>
+                                <form method="post" action="{% url 'dineva:restaurant-status' restaurant.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-link table-action p-0" type="submit">{% if restaurant.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+                                </form>
+                            </td>
                         </tr>
                     {% empty %}
                         <tr><td colspan="7" class="empty-state">No restaurants have been added.</td></tr>

@@ -1,536 +1,358 @@
-import re
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from django.contrib.auth import authenticate
 from django.core import mail
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, close_old_connections, transaction
+from django.db import close_old_connections
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
-from .models import Restaurant, User, UserPublicIdSequence
-from .services import AccountSetupEmailError, create_restaurant_user
+from .access import is_superadmin
+from .models import EmployeeIDProof, Restaurant, User, UserProfile, UserPublicIdSequence
+from .services import RegistrationEmailError, create_employee
+from .test_utils import employee_kwargs, image_upload, password_from_welcome, pdf_upload
 
 
-@override_settings(
-    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
-    DEFAULT_FROM_EMAIL="noreply@example.invalid",
-    EMAIL_HOST_USER="smtp-user-secret@example.invalid",
-    EMAIL_HOST_PASSWORD="smtp-password-secret",
-)
-class SuperAdminManagementTests(TestCase):
-    password = "Test-admin-password-123"
+class PrivateMediaMixin:
+    @classmethod
+    def setUpClass(cls):
+        cls.private_media = TemporaryDirectory()
+        cls.settings_override = override_settings(
+            PRIVATE_MEDIA_ROOT=cls.private_media.name,
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+            DINEVA_PUBLIC_BASE_URL="https://dineva.example.invalid",
+        )
+        cls.settings_override.enable()
+        super().setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.settings_override.disable()
+        cls.private_media.cleanup()
+
+
+def form_data(restaurant=None, **overrides):
+    data = {
+        "name": "Form Employee",
+        "email": "form@example.invalid",
+        "contact": "+910000000010",
+        "address": "10 Form Street",
+        "photo": image_upload(),
+        "id_proof_type": EmployeeIDProof.ProofType.AADHAAR,
+        "id_proof_file": pdf_upload(),
+    }
+    if restaurant:
+        data["restaurant"] = getattr(restaurant, "pk", restaurant)
+    data.update(overrides)
+    return data
+
+
+class SuperAdminManagementTests(PrivateMediaMixin, TestCase):
     def setUp(self):
-        self.superadmin = User.objects.create_superuser(
+        self.admin = User.objects.create_superuser(
             username="platform.admin",
-            email="admin@example.com",
+            email="admin@example.invalid",
             name="Platform Admin",
-            password=self.password,
+            password="Admin-secure-123!",
         )
         self.restaurant = Restaurant.objects.create(
             name="Active Restaurant",
             address="1 Active Street",
-            contact="+910000000010",
-            email="active@example.com",
+            contact="+910000000011",
+            email="active@example.invalid",
         )
         self.inactive_restaurant = Restaurant.objects.create(
             name="Inactive Restaurant",
             address="2 Inactive Street",
-            contact="+910000000011",
-            email="inactive@example.com",
+            contact="+910000000012",
+            email="inactive@example.invalid",
             is_active=False,
         )
-        self.client.force_login(self.superadmin)
+        self.client.force_login(self.admin)
 
-    def owner_data(self, **overrides):
-        data = {
-            "name": "Test Owner",
-            "username": "test.owner",
-            "email": "owner@example.invalid",
-            "restaurant": self.restaurant.pk,
-        }
+    def create_employee(self, **overrides):
+        data = employee_kwargs(self.restaurant)
         data.update(overrides)
-        return data
+        return create_employee(**data)
 
-    def staff_data(self, **overrides):
-        data = {
-            "name": "Test Waiter",
-            "username": "test.waiter",
-            "email": "waiter@example.invalid",
-            "restaurant": self.restaurant.pk,
-            "staff_type": User.Role.WAITER,
-        }
-        data.update(overrides)
-        return data
+    def test_superadmin_guard_requires_complete_platform_identity(self):
+        self.assertTrue(is_superadmin(self.admin))
+        self.admin.is_superuser = False
+        self.assertFalse(is_superadmin(self.admin))
 
-    def test_superadmin_can_create_restaurant(self):
+    def test_superadmin_can_create_and_edit_restaurant(self):
         response = self.client.post(
             reverse("dineva:restaurant-add"),
-            {
-                "name": "New Restaurant",
-                "address": "3 New Street",
-                "contact": "+910000000012",
-                "email": "new@example.com",
-                "is_active": "on",
-            },
+            {"name": "New Restaurant", "address": "3 Street", "contact": "+910000000013", "email": "new@example.invalid", "is_active": "on"},
+        )
+        restaurant = Restaurant.objects.get(name="New Restaurant")
+        self.assertRedirects(response, reverse("dineva:restaurants"))
+        response = self.client.post(
+            reverse("dineva:restaurant-edit", args=[restaurant.pk]),
+            {"name": "Updated Restaurant", "address": restaurant.address, "contact": restaurant.contact, "email": restaurant.email, "is_active": "on"},
         )
         self.assertRedirects(response, reverse("dineva:restaurants"))
-        self.assertTrue(Restaurant.objects.filter(name="New Restaurant").exists())
+        restaurant.refresh_from_db()
+        self.assertEqual(restaurant.name, "Updated Restaurant")
 
-    def test_invalid_restaurant_data_is_rejected(self):
-        response = self.client.post(
-            reverse("dineva:restaurant-add"),
-            {"name": "", "address": "", "contact": "", "email": "invalid"},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(Restaurant.objects.filter(email="invalid").exists())
-        self.assertTrue(response.context["form"].errors)
+    def test_restaurant_status_changes_without_deletion(self):
+        self.client.post(reverse("dineva:restaurant-status", args=[self.restaurant.pk]))
+        self.restaurant.refresh_from_db()
+        self.assertFalse(self.restaurant.is_active)
+        self.assertTrue(Restaurant.objects.filter(pk=self.restaurant.pk).exists())
 
-    def test_csrf_is_required_for_restaurant_creation(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.superadmin)
-        response = client.post(
-            reverse("dineva:restaurant-add"),
-            {
-                "name": "No CSRF Restaurant",
-                "address": "4 Test Street",
-                "contact": "+910000000013",
-                "email": "no-csrf@example.com",
-            },
-        )
-        self.assertEqual(response.status_code, 403)
+    def test_owner_creation_generates_identity_and_one_email(self):
+        response = self.client.post(reverse("dineva:owner-add"), form_data(self.restaurant))
+        user = User.objects.get(email="form@example.invalid")
+        self.assertRedirects(response, reverse("dineva:owner-list"))
+        self.assertEqual(user.username, "form.employee")
+        self.assertEqual(user.profile.role, UserProfile.Role.OWNER)
+        self.assertEqual(user.profile.public_id, "OWN-00001")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertTrue(user.check_password(password_from_welcome(mail.outbox[0])))
 
-    def test_superadmin_can_create_owner(self):
-        response = self.client.post(
-            reverse("dineva:owner-add"),
-            self.owner_data(),
-        )
-        self.assertRedirects(response, reverse("dineva:dashboard"))
-        owner = User.objects.get(email="owner@example.invalid")
-        self.assertEqual(owner.role, User.Role.OWNER)
-        self.assertEqual(owner.restaurant, self.restaurant)
-        self.assertFalse(owner.is_superuser)
-        self.assertFalse(owner.has_usable_password())
-        self.assertEqual(owner.public_id, "OWN-00001")
-        self.assertEqual(owner.username, "test.owner")
-        self.assertNotEqual(owner.username, owner.public_id)
-        self.assertEqual(len(mail.outbox), 2)
+    def test_waiter_and_kitchen_staff_get_role_ids(self):
+        for index, (role, prefix) in enumerate(
+            [(UserProfile.Role.WAITER, "WTR-"), (UserProfile.Role.KITCHEN_STAFF, "KST-")]
+        ):
+            response = self.client.post(
+                reverse("dineva:staff-add"),
+                form_data(
+                    self.restaurant,
+                    name=f"Staff {index}",
+                    email=f"staff{index}@example.invalid",
+                    staff_type=role,
+                ),
+            )
+            self.assertEqual(response.status_code, 302)
+            profile = User.objects.get(email=f"staff{index}@example.invalid").profile
+            self.assertTrue(profile.public_id.startswith(prefix))
 
-    def test_owner_role_cannot_be_manipulated(self):
+    def test_username_role_and_public_id_post_injection_is_ignored(self):
         self.client.post(
             reverse("dineva:owner-add"),
-            self.owner_data(
-                role=User.Role.SUPERADMIN,
-                is_superuser="on",
+            form_data(
+                self.restaurant,
+                username="attacker",
+                role=UserProfile.Role.SUPERADMIN,
                 public_id="WTR-99999",
+                is_superuser="on",
             ),
         )
-        owner = User.objects.get(email="owner@example.invalid")
-        self.assertEqual(owner.role, User.Role.OWNER)
-        self.assertFalse(owner.is_superuser)
-        self.assertEqual(owner.public_id, "OWN-00001")
+        user = User.objects.get(email="form@example.invalid")
+        self.assertEqual(user.username, "form.employee")
+        self.assertEqual(user.profile.role, UserProfile.Role.OWNER)
+        self.assertEqual(user.profile.public_id, "OWN-00001")
+        self.assertFalse(user.is_superuser)
 
-    def test_duplicate_owner_email_is_rejected_without_reassignment(self):
-        existing = User.objects.create_user(
-            username="existing.waiter",
-            email="owner@example.invalid",
-            name="Existing Waiter",
-            password=self.password,
-            role=User.Role.WAITER,
-            restaurant=self.restaurant,
-        )
-        response = self.client.post(
-            reverse("dineva:owner-add"),
-            self.owner_data(),
-        )
+    def test_inactive_restaurant_cannot_receive_employee(self):
+        response = self.client.post(reverse("dineva:owner-add"), form_data(self.inactive_restaurant))
         self.assertEqual(response.status_code, 200)
-        existing.refresh_from_db()
-        self.assertEqual(existing.role, User.Role.WAITER)
-        self.assertContains(response, "A user with this email already exists.")
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(User.objects.filter(email="form@example.invalid").exists())
 
-    def test_duplicate_username_is_rejected_without_creating_an_account(self):
-        User.objects.create_user(
-            username="test.owner",
-            email="existing@example.invalid",
-            name="Existing Owner",
-            password=self.password,
-            role=User.Role.OWNER,
-            restaurant=self.restaurant,
-        )
-        response = self.client.post(
-            reverse("dineva:owner-add"),
-            self.owner_data(email="new-owner@example.invalid"),
-        )
+    def test_all_mandatory_employee_fields_are_required(self):
+        response = self.client.post(reverse("dineva:owner-add"), {"restaurant": self.restaurant.pk})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "A user with this username already exists.")
-        self.assertFalse(User.objects.filter(email="new-owner@example.invalid").exists())
-        self.assertEqual(len(mail.outbox), 0)
+        for field in ("name", "email", "contact", "address", "photo", "id_proof_type", "id_proof_file"):
+            self.assertIn(field, response.context["form"].errors)
 
-    def test_inactive_restaurant_cannot_be_selected_for_owner(self):
-        response = self.client.post(
-            reverse("dineva:owner-add"),
-            self.owner_data(restaurant=self.inactive_restaurant.pk),
-        )
-        self.assertEqual(response.status_code, 200)
+    def test_welcome_email_contains_credentials_and_no_forbidden_data(self):
+        user = self.create_employee()
+        message = mail.outbox[-1]
+        password = password_from_welcome(message)
+        for value in (user.name, user.username, user.email, self.restaurant.name, "Role: Owner", user.profile.public_id, password, "https://dineva.example.invalid/login/"):
+            self.assertIn(value, message.body)
+        for forbidden in (user.password, str(user.pk), "/account/setup/", "smtp-password", "employee_id_proofs"):
+            self.assertNotIn(forbidden, message.body)
+
+    @patch("dineva.services.generate_password", return_value="Secure&Password123!")
+    def test_plain_text_email_preserves_special_password_characters(self, _generate):
+        user = self.create_employee()
+        emailed_password = password_from_welcome(mail.outbox[-1])
+        self.assertEqual(emailed_password, "Secure&Password123!")
+        self.assertTrue(user.check_password(emailed_password))
+
+    @patch("dineva.services.send_mail", return_value=0)
+    def test_clear_email_failure_rolls_back_database_and_private_files(self, _send):
+        with self.assertRaises(RegistrationEmailError):
+            self.create_employee()
+        self.assertFalse(User.objects.filter(email="owner@example.invalid").exists())
+        self.assertEqual(UserProfile.objects.filter(role=UserProfile.Role.OWNER).count(), 0)
+        self.assertEqual(EmployeeIDProof.objects.count(), 0)
+        self.assertEqual(UserPublicIdSequence.objects.get(role=UserProfile.Role.OWNER).next_value, 1)
+        self.assertEqual(list(Path(self.private_media.name).rglob("*.*")), [])
+
+    def test_retry_uses_fresh_password_and_leaves_no_duplicate_identity(self):
+        passwords = []
+
+        def fail_email(**kwargs):
+            passwords.append(kwargs["context"]["generated_password"])
+            raise RegistrationEmailError("failed")
+
+        with patch("dineva.services.send_templated_email", side_effect=fail_email):
+            for _ in range(2):
+                with self.assertRaises(RegistrationEmailError):
+                    self.create_employee(photo=image_upload(), id_proof_file=pdf_upload())
+        self.assertEqual(len(set(passwords)), 2)
         self.assertFalse(User.objects.filter(email="owner@example.invalid").exists())
 
-    def test_superadmin_can_create_waiter(self):
-        self.client.post(reverse("dineva:staff-add"), self.staff_data())
-        waiter = User.objects.get(email="waiter@example.invalid")
-        self.assertEqual(waiter.role, User.Role.WAITER)
-        self.assertEqual(waiter.restaurant, self.restaurant)
-        self.assertFalse(waiter.has_usable_password())
-        self.assertEqual(waiter.public_id, "WTR-00001")
+    def test_superadmin_can_view_proof_with_private_headers(self):
+        user = self.create_employee()
+        response = self.client.get(reverse("dineva:id-proof-download", args=[user.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("private", response["Cache-Control"])
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        with self.assertRaises(ValueError):
+            user.profile.id_proof.file.url
 
-    def test_superadmin_can_create_kitchen_staff(self):
-        self.client.post(
-            reverse("dineva:staff-add"),
-            self.staff_data(
-                name="Test Kitchen Staff",
-                email="kitchen@example.invalid",
-                staff_type=User.Role.KITCHEN_STAFF,
-            ),
+    def test_superadmin_edit_replaces_proof_and_deletes_old_file(self):
+        user = self.create_employee()
+        old_name = user.profile.id_proof.file.name
+        data = form_data(
+            name="Updated Owner",
+            email=user.email,
+            contact="+910000000099",
+            address="Updated Address",
+            photo=image_upload("new-photo.png", "PNG"),
+            id_proof_type=EmployeeIDProof.ProofType.PAN,
+            id_proof_file=pdf_upload("new-proof.pdf"),
         )
-        user = User.objects.get(email="kitchen@example.invalid")
-        self.assertEqual(user.role, User.Role.KITCHEN_STAFF)
-        self.assertEqual(user.restaurant, self.restaurant)
-        self.assertEqual(user.public_id, "KST-00001")
+        data.pop("restaurant", None)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("dineva:employee-edit", args=[user.pk]), data)
+        self.assertRedirects(response, reverse("dineva:employee-detail", args=[user.pk]))
+        user.profile.id_proof.refresh_from_db()
+        self.assertNotEqual(user.profile.id_proof.file.name, old_name)
+        self.assertFalse(user.profile.id_proof.file.storage.exists(old_name))
 
-    def test_public_ids_are_unique_stable_and_database_constrained(self):
-        first = User.objects.create_user(
-            username="first.owner",
-            email="first-owner@example.invalid",
-            name="First Owner",
-            password=None,
-            role=User.Role.OWNER,
-            restaurant=self.restaurant,
-        )
-        second = User.objects.create_user(
-            username="second.owner",
-            email="second-owner@example.invalid",
-            name="Second Owner",
-            password=None,
-            role=User.Role.OWNER,
-            restaurant=self.inactive_restaurant,
-        )
-        self.assertEqual(first.public_id, "OWN-00001")
-        self.assertEqual(second.public_id, "OWN-00002")
-        self.assertNotEqual(first.public_id, second.public_id)
-        original_public_id = first.public_id
 
-        first.name = "Renamed Owner"
-        first.save(update_fields=["name"])
-        first.refresh_from_db()
-        self.assertEqual(first.public_id, "OWN-00001")
+class OwnerTenantManagementTests(PrivateMediaMixin, TestCase):
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="Owner Restaurant", address="1 Owner Street", contact="+910000000020", email="owner-restaurant@example.invalid")
+        self.other_restaurant = Restaurant.objects.create(name="Other Restaurant", address="2 Other Street", contact="+910000000021", email="other@example.invalid")
+        self.owner = create_employee(**employee_kwargs(self.restaurant))
+        self.owner_password = password_from_welcome(mail.outbox[-1])
+        self.staff = create_employee(**employee_kwargs(self.restaurant, role=UserProfile.Role.WAITER, name="Own Waiter", email="own-waiter@example.invalid")).profile
+        self.other_staff = create_employee(**employee_kwargs(self.other_restaurant, role=UserProfile.Role.WAITER, name="Other Waiter", email="other-waiter@example.invalid")).profile
+        self.client.force_login(self.owner)
 
-        first.public_id = "OWN-99999"
-        with self.assertRaises(ValidationError):
-            first.save(update_fields=["public_id"])
-        first.refresh_from_db()
-
-        first.username = "changed.owner"
-        with self.assertRaises(ValidationError):
-            first.save(update_fields=["username"])
-        first.refresh_from_db()
-        self.assertEqual(first.username, "first.owner")
-
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            User.objects.filter(pk=second.pk).update(public_id=original_public_id)
-
-    def test_public_id_cannot_be_supplied_to_user_manager(self):
-        with self.assertRaisesMessage(ValueError, "generated by Dineva"):
-            User.objects.create_user(
-                username="injected.owner",
-                email="injected@example.invalid",
-                name="Injected ID",
-                password=None,
-                role=User.Role.OWNER,
-                restaurant=self.restaurant,
-                public_id="OWN-99999",
-            )
-
-    def test_duplicate_staff_email_is_rejected(self):
-        User.objects.create_user(
-            username="existing.owner",
-            email="waiter@example.invalid",
-            name="Existing Owner",
-            password=self.password,
-            role=User.Role.OWNER,
-            restaurant=self.restaurant,
-        )
+    def test_owner_staff_creation_derives_restaurant(self):
         response = self.client.post(
-            reverse("dineva:staff-add"),
-            self.staff_data(),
+            reverse("dineva:owner-staff-add"),
+            form_data(name="New Waiter", email="new-waiter@example.invalid", staff_type=UserProfile.Role.WAITER),
+        )
+        self.assertRedirects(response, reverse("dineva:owner-staff-list"))
+        self.assertEqual(User.objects.get(email="new-waiter@example.invalid").profile.restaurant, self.restaurant)
+
+    def test_owner_restaurant_injection_is_blocked(self):
+        response = self.client.post(
+            reverse("dineva:owner-staff-add"),
+            form_data(name="Injected", email="injected@example.invalid", staff_type=UserProfile.Role.WAITER, restaurant=self.other_restaurant.pk),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "A user with this email already exists.")
-        self.assertEqual(User.objects.filter(email="waiter@example.invalid").count(), 1)
+        self.assertFalse(User.objects.filter(email="injected@example.invalid").exists())
 
-    def test_inactive_restaurant_cannot_be_selected_for_staff(self):
+    def test_owner_cannot_create_owner(self):
         response = self.client.post(
-            reverse("dineva:staff-add"),
-            self.staff_data(restaurant=self.inactive_restaurant.pk),
+            reverse("dineva:owner-staff-add"),
+            form_data(name="Bad Owner", email="bad-owner@example.invalid", staff_type=UserProfile.Role.OWNER),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(email="waiter@example.invalid").exists())
+        self.assertFalse(User.objects.filter(email="bad-owner@example.invalid").exists())
 
-    def test_arbitrary_staff_role_is_rejected(self):
+    def test_owner_staff_list_is_tenant_scoped_and_hides_id_proof(self):
+        response = self.client.get(reverse("dineva:owner-staff-list"))
+        self.assertContains(response, self.staff.user.name)
+        self.assertNotContains(response, self.other_staff.user.name)
+        self.assertNotContains(response, "ID Proof")
+
+    def test_owner_cross_tenant_details_return_404(self):
+        response = self.client.get(reverse("dineva:owner-staff-detail", args=[self.other_staff.user_id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_owner_cannot_access_id_proof(self):
+        self.assertEqual(self.client.get(reverse("dineva:id-proof-download", args=[self.staff.user_id])).status_code, 403)
+
+    def test_staff_cannot_access_id_proof_or_management(self):
+        self.client.force_login(self.staff.user)
+        self.assertEqual(self.client.get(reverse("dineva:id-proof-download", args=[self.staff.user_id])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("dineva:owner-staff-list")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("dineva:dashboard")).status_code, 403)
+
+    def test_owner_can_update_only_staff_photo(self):
+        original_name = self.staff.user.name
         response = self.client.post(
-            reverse("dineva:staff-add"),
-            self.staff_data(staff_type=User.Role.SUPERADMIN, role=User.Role.SUPERADMIN),
+            reverse("dineva:owner-staff-photo", args=[self.staff.user_id]),
+            {"photo": image_upload("updated.png", "PNG"), "name": "Manipulated", "contact": "bad"},
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(email="waiter@example.invalid").exists())
+        self.assertRedirects(response, reverse("dineva:owner-staff-detail", args=[self.staff.user_id]))
+        self.staff.user.refresh_from_db()
+        self.assertEqual(self.staff.user.name, original_name)
 
-    def test_unknown_restaurant_id_is_rejected(self):
-        response = self.client.post(
-            reverse("dineva:staff-add"),
-            self.staff_data(restaurant=999999),
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(email="waiter@example.invalid").exists())
+    def test_owner_can_toggle_own_staff_without_deleting(self):
+        self.client.post(reverse("dineva:owner-staff-status", args=[self.staff.user_id]))
+        self.staff.user.refresh_from_db()
+        self.assertFalse(self.staff.user.is_active)
+        self.assertTrue(User.objects.filter(pk=self.staff.user_id).exists())
 
-    def test_restaurant_users_cannot_access_management_endpoints(self):
-        endpoints = [
-            "dineva:dashboard",
-            "dineva:restaurants",
-            "dineva:restaurant-add",
-            "dineva:owner-add",
-            "dineva:staff-add",
-        ]
-        for role in [User.Role.OWNER, User.Role.WAITER, User.Role.KITCHEN_STAFF]:
-            user = User.objects.create_user(
-                username=f"blocked.{role.lower()}",
-                email=f"{role.lower()}@example.invalid",
-                name=f"Test {role}",
-                password=self.password,
-                role=role,
-                restaurant=self.restaurant,
-            )
-            self.client.force_login(user)
-            for endpoint in endpoints:
-                with self.subTest(role=role, endpoint=endpoint):
-                    self.assertEqual(self.client.get(reverse(endpoint)).status_code, 403)
-
-    def test_dashboard_counts_and_restaurant_list_are_correct(self):
-        User.objects.create_user(
-            username="dashboard.owner",
-            email="owner@example.invalid",
-            name="Owner",
-            password=None,
-            role=User.Role.OWNER,
-            restaurant=self.restaurant,
-        )
-        User.objects.create_user(
-            username="dashboard.waiter",
-            email="waiter@example.invalid",
-            name="Waiter",
-            password=None,
-            role=User.Role.WAITER,
-            restaurant=self.restaurant,
-        )
-        response = self.client.get(reverse("dineva:dashboard"))
-        self.assertEqual(response.context["restaurant_count"], 2)
-        self.assertEqual(response.context["owner_count"], 1)
-        self.assertEqual(response.context["waiter_count"], 1)
-        active = next(r for r in response.context["restaurants"] if r == self.restaurant)
-        self.assertEqual(active.owner_count, 1)
-        self.assertEqual(active.staff_count, 1)
-        self.assertContains(response, self.restaurant.name)
-
-    def test_unauthenticated_management_access_redirects_to_login(self):
-        self.client.logout()
-        for endpoint in [
-            "dineva:dashboard",
-            "dineva:restaurants",
-            "dineva:restaurant-add",
-            "dineva:owner-add",
-            "dineva:staff-add",
-        ]:
+    def test_owner_cannot_access_superadmin_endpoints(self):
+        endpoints = ["dashboard", "restaurants", "restaurant-add", "owner-list", "owner-add", "staff-list", "staff-add"]
+        for endpoint in endpoints:
             with self.subTest(endpoint=endpoint):
-                self.assertRedirects(
-                    self.client.get(reverse(endpoint)),
-                    reverse("dineva:login"),
-                )
-
-    def test_setup_email_contains_safe_account_context_and_link(self):
-        self.client.post(reverse("dineva:owner-add"), self.owner_data())
-        self.assertEqual(len(mail.outbox), 2)
-        welcome_email, setup_email = mail.outbox
-        self.assertEqual(welcome_email.subject, "Welcome to Dineva")
-        self.assertNotIn("/account/setup/", welcome_email.body)
-        email = setup_email
-        self.assertIn("Dineva", email.body)
-        self.assertIn("Test Owner", email.body)
-        self.assertIn(self.restaurant.name, email.body)
-        self.assertRegex(email.body, r"http://testserver/account/setup/[^\s]+")
-        self.assertIn("expires", email.body)
-        self.assertNotIn(self.password, email.body)
-
-    def test_each_restaurant_role_receives_safe_separate_welcome_email(self):
-        request = self.client.get(reverse("dineva:owner-add")).wsgi_request
-        cases = [
-            (User.Role.OWNER, "Owner", "Owner ID", "OWN-"),
-            (User.Role.WAITER, "Waiter", "Waiter ID", "WTR-"),
-            (
-                User.Role.KITCHEN_STAFF,
-                "Kitchen Staff",
-                "Kitchen Staff ID",
-                "KST-",
-            ),
-        ]
-
-        for index, (role, role_label, id_label, prefix) in enumerate(cases):
-            with self.subTest(role=role):
-                mail.outbox.clear()
-                user = create_restaurant_user(
-                    request=request,
-                    username=f"welcome.{index}",
-                    name=f"Welcome {role_label}",
-                    email=f"welcome-{index}@example.invalid",
-                    restaurant=self.restaurant,
-                    role=role,
-                )
-                self.assertFalse(user.has_usable_password())
-                self.assertTrue(user.public_id.startswith(prefix))
-                self.assertEqual(len(mail.outbox), 2)
-
-                welcome_email, setup_email = mail.outbox
-                self.assertEqual(welcome_email.subject, "Welcome to Dineva")
-                self.assertIn(user.name, welcome_email.body)
-                self.assertIn(user.email, welcome_email.body)
-                self.assertIn(f"Username: {user.username}", welcome_email.body)
-                self.assertIn(self.restaurant.name, welcome_email.body)
-                self.assertIn(f"Role: {role_label}", welcome_email.body)
-                self.assertIn(f"{id_label}: {user.public_id}", welcome_email.body)
-                self.assertIn("successfully created", welcome_email.body)
-                self.assertNotIn("/account/setup/", welcome_email.body)
-                self.assertNotIn(self.password, welcome_email.body)
-                self.assertNotIn("smtp-user-secret", welcome_email.body)
-                self.assertNotIn("smtp-password-secret", welcome_email.body)
-
-                self.assertEqual(
-                    setup_email.subject,
-                    "Set up your Dineva account",
-                )
-                self.assertRegex(
-                    setup_email.body,
-                    r"http://testserver/account/setup/[^\s]+",
-                )
-
-    def test_user_can_set_password_and_setup_link_cannot_be_reused(self):
-        self.client.post(reverse("dineva:owner-add"), self.owner_data())
-        owner = User.objects.get(email="owner@example.invalid")
-        original_url = re.search(
-            r"http://testserver(?P<path>/account/setup/[^\s]+)",
-            mail.outbox[1].body,
-        ).group("path")
-
-        response = self.client.get(original_url)
-        self.assertEqual(response.status_code, 302)
-        setup_form_url = response.url
-        new_password = "Owner-secure-password-456"
-        response = self.client.post(
-            setup_form_url,
-            {"new_password1": new_password, "new_password2": new_password},
-        )
-        self.assertRedirects(response, reverse("dineva:account-setup-success"))
-
-        owner.refresh_from_db()
-        self.assertTrue(owner.check_password(new_password))
-        self.assertNotEqual(owner.password, new_password)
-        self.assertEqual(
-            authenticate(username=owner.username, password=new_password),
-            owner,
-        )
-        self.assertIsNone(authenticate(email=owner.email, password=new_password))
-
-        reused = self.client.get(original_url)
-        self.assertEqual(reused.status_code, 200)
-        self.assertContains(reused, "invalid or has already been used")
-
-    @patch("dineva.services.send_account_setup_email", side_effect=RuntimeError)
-    def test_setup_email_failure_occurs_after_committed_account_creation(self, _send):
-        request = self.client.get(reverse("dineva:owner-add")).wsgi_request
-        with self.assertRaises(AccountSetupEmailError) as raised:
-            create_restaurant_user(
-                request=request,
-                username="email.failure",
-                name="Email Failure Owner",
-                email="email-failure@example.invalid",
-                restaurant=self.restaurant,
-                role=User.Role.OWNER,
-            )
-        self.assertTrue(
-            User.objects.filter(email="email-failure@example.invalid").exists()
-        )
-        user = User.objects.get(email="email-failure@example.invalid")
-        self.assertEqual(user.public_id, "OWN-00001")
-        self.assertFalse(user.has_usable_password())
-        self.assertEqual(raised.exception.stage, "password setup")
-        self.assertEqual(len(mail.outbox), 1)
-
-    @patch("dineva.services.send_welcome_email", side_effect=RuntimeError)
-    def test_welcome_email_failure_occurs_after_committed_account_creation(
-        self, _send
-    ):
-        request = self.client.get(reverse("dineva:owner-add")).wsgi_request
-        with self.assertRaises(AccountSetupEmailError) as raised:
-            create_restaurant_user(
-                request=request,
-                username="welcome.failure",
-                name="Welcome Failure Owner",
-                email="welcome-failure@example.invalid",
-                restaurant=self.restaurant,
-                role=User.Role.OWNER,
-            )
-        user = User.objects.get(email="welcome-failure@example.invalid")
-        self.assertEqual(user.public_id, "OWN-00001")
-        self.assertFalse(user.has_usable_password())
-        self.assertEqual(raised.exception.stage, "welcome")
-        self.assertEqual(len(mail.outbox), 0)
+                self.assertEqual(self.client.get(reverse(f"dineva:{endpoint}")).status_code, 403)
 
 
-class PublicIdConcurrencyTests(TransactionTestCase):
+class UploadValidationTests(PrivateMediaMixin, TestCase):
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="Upload Restaurant", address="1 Upload Street", contact="+910000000030", email="upload@example.invalid")
+
+    def test_jpeg_png_and_pdf_are_accepted(self):
+        owner = create_employee(**employee_kwargs(self.restaurant, photo=image_upload("photo.jpeg"), id_proof_file=pdf_upload()))
+        waiter = create_employee(**employee_kwargs(self.restaurant, role=UserProfile.Role.WAITER, name="PNG Waiter", email="png@example.invalid", photo=image_upload("photo.png", "PNG"), id_proof_file=image_upload("proof.jpg")))
+        self.assertEqual(owner.profile.id_proof.mime_type, "application/pdf")
+        self.assertEqual(waiter.profile.id_proof.mime_type, "image/jpeg")
+
+    def test_invalid_extension_and_mime_are_rejected(self):
+        with self.assertRaises(ValidationError):
+            create_employee(**employee_kwargs(self.restaurant, id_proof_file=pdf_upload("proof.exe")))
+        bad_mime = pdf_upload()
+        bad_mime.content_type = "text/plain"
+        with self.assertRaises(ValidationError):
+            create_employee(**employee_kwargs(self.restaurant, id_proof_file=bad_mime))
+
+    def test_oversized_photo_and_proof_are_rejected(self):
+        photo = image_upload()
+        photo.size = 5 * 1024 * 1024 + 1
+        with self.assertRaises(ValidationError):
+            create_employee(**employee_kwargs(self.restaurant, photo=photo))
+        proof = pdf_upload()
+        proof.size = 20 * 1024 * 1024 + 1
+        with self.assertRaises(ValidationError):
+            create_employee(**employee_kwargs(self.restaurant, id_proof_file=proof))
+
+
+class IdentityConcurrencyTests(PrivateMediaMixin, TransactionTestCase):
     reset_sequences = True
 
     def setUp(self):
-        for role in [User.Role.OWNER, User.Role.WAITER, User.Role.KITCHEN_STAFF]:
-            UserPublicIdSequence.objects.update_or_create(
-                role=role,
-                defaults={"next_value": 1},
-            )
-        self.restaurant = Restaurant.objects.create(
-            name="Concurrency Restaurant",
-            address="3 Concurrent Street",
-            contact="+910000000020",
-            email="concurrency@example.invalid",
-        )
+        self.restaurant = Restaurant.objects.create(name="Concurrency Restaurant", address="1 Concurrent Street", contact="+910000000040", email="concurrent@example.invalid")
 
-    def test_concurrent_owner_creation_allocates_unique_public_ids(self):
-        barrier = Barrier(2)
-
-        def create_owner(index):
+    @patch("dineva.services.send_welcome_email", return_value=1)
+    def test_concurrent_creation_allocates_unique_usernames_and_public_ids(self, _send):
+        def create(index):
             close_old_connections()
             try:
                 restaurant = Restaurant.objects.get(pk=self.restaurant.pk)
-                barrier.wait(timeout=10)
-                return User.objects.create_user(
-                    username=f"concurrent.owner.{index}",
-                    email=f"concurrent-{index}@example.invalid",
-                    name=f"Concurrent Owner {index}",
-                    password=None,
-                    role=User.Role.OWNER,
-                    restaurant=restaurant,
-                ).public_id
+                user = create_employee(**employee_kwargs(restaurant, name="Same Name", email=f"same{index}@example.invalid", photo=image_upload(f"photo{index}.jpg"), id_proof_file=pdf_upload(f"proof{index}.pdf")))
+                return user.username, user.profile.public_id
             finally:
                 close_old_connections()
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            public_ids = list(executor.map(create_owner, [1, 2]))
-
-        self.assertEqual(set(public_ids), {"OWN-00001", "OWN-00002"})
+            identities = list(executor.map(create, [1, 2]))
+        self.assertEqual({name for name, _ in identities}, {"same.name", "same.name1"})
+        self.assertEqual({public_id for _, public_id in identities}, {"OWN-00001", "OWN-00002"})

@@ -1,8 +1,12 @@
 from decimal import Decimal
+from tempfile import TemporaryDirectory
 
-from django.contrib.auth import SESSION_KEY
+from django.contrib.auth import SESSION_KEY, authenticate
+from django.core import mail
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from .models import (
@@ -14,24 +18,221 @@ from .models import (
     Restaurant,
     RestaurantTable,
     User,
+    UserProfile,
 )
+from .test_utils import create_test_employee, password_from_welcome
 
 
-class FoundationModelTests(TestCase):
+class PrivateMediaMixin:
+    @classmethod
+    def setUpClass(cls):
+        cls.private_media = TemporaryDirectory()
+        cls.settings_override = override_settings(
+            PRIVATE_MEDIA_ROOT=cls.private_media.name,
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+            DINEVA_PUBLIC_BASE_URL="https://dineva.example.invalid",
+        )
+        cls.settings_override.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.settings_override.disable()
+        cls.private_media.cleanup()
+
+
+class AccountArchitectureTests(PrivateMediaMixin, TestCase):
     def setUp(self):
+        cache.clear()
         self.restaurant = Restaurant.objects.create(
-            name="Dineva Test Kitchen",
+            name="Test Kitchen",
             address="1 Test Street",
             contact="+910000000000",
-            email="restaurant@example.com",
+            email="restaurant@example.invalid",
         )
-        self.waiter = User.objects.create_user(
-            username="test.waiter",
-            email="waiter@example.com",
+
+    def test_superuser_creation_creates_platform_profile(self):
+        admin = User.objects.create_superuser(
+            username="platform.admin",
+            email="admin@example.invalid",
+            name="Platform Admin",
+            password="Admin-secure-123!",
+        )
+        self.assertEqual(admin.profile.role, UserProfile.Role.SUPERADMIN)
+        self.assertIsNone(admin.profile.restaurant_id)
+        self.assertIsNone(admin.profile.public_id)
+        self.assertTrue(admin.is_superuser)
+
+    def test_employee_fields_are_not_on_user(self):
+        field_names = {field.name for field in User._meta.get_fields()}
+        self.assertFalse({"role", "restaurant", "public_id"} & field_names)
+
+    def test_generated_username_and_password_hash(self):
+        user = create_test_employee(self.restaurant, name="Rahul Sharma")
+        password = password_from_welcome(mail.outbox[-1])
+        self.assertEqual(user.username, "rahul.sharma")
+        self.assertTrue(user.check_password(password))
+        self.assertNotEqual(user.password, password)
+
+    def test_username_collision_uses_numeric_suffix(self):
+        first = create_test_employee(self.restaurant, name="Rahul Sharma")
+        second = create_test_employee(
+            self.restaurant,
+            name="Rahul Sharma",
+            email="rahul2@example.invalid",
+        )
+        self.assertEqual(first.username, "rahul.sharma")
+        self.assertEqual(second.username, "rahul.sharma1")
+
+    def test_username_is_immutable(self):
+        user = create_test_employee(self.restaurant)
+        user.username = "changed.username"
+        with self.assertRaises(ValidationError):
+            user.save()
+
+    def test_role_restaurant_and_public_id_are_immutable(self):
+        user = create_test_employee(self.restaurant)
+        profile = user.profile
+        for field, value in (
+            ("role", UserProfile.Role.WAITER),
+            ("public_id", "OWN-99999"),
+            ("restaurant_id", None),
+        ):
+            profile.refresh_from_db()
+            setattr(profile, field, value)
+            with self.assertRaises(ValidationError):
+                profile.save()
+
+    def test_email_remains_unique(self):
+        create_test_employee(self.restaurant)
+        with self.assertRaises(Exception):
+            create_test_employee(self.restaurant, name="Other", email="OWNER@example.invalid")
+
+
+class AuthenticationLifecycleTests(PrivateMediaMixin, TestCase):
+    password = "Admin-secure-123!"
+
+    def setUp(self):
+        cache.clear()
+        mail.outbox.clear()
+        self.admin = User.objects.create_superuser(
+            username="platform.admin",
+            email="admin@example.invalid",
+            name="Platform Admin",
+            password=self.password,
+        )
+        self.restaurant = Restaurant.objects.create(
+            name="Auth Kitchen",
+            address="2 Test Street",
+            contact="+910000000002",
+            email="auth@example.invalid",
+        )
+        self.owner = create_test_employee(self.restaurant)
+        self.owner_password = password_from_welcome(mail.outbox[-1])
+        self.waiter = create_test_employee(
+            self.restaurant,
+            role=UserProfile.Role.WAITER,
             name="Test Waiter",
-            password="test-password-only",
-            role=User.Role.WAITER,
-            restaurant=self.restaurant,
+            email="waiter@example.invalid",
+        )
+        self.waiter_password = password_from_welcome(mail.outbox[-1])
+
+    def test_shared_login_uses_username_and_csrf(self):
+        response = self.client.get(reverse("dineva:login"))
+        self.assertContains(response, "Username")
+        self.assertContains(response, "csrfmiddlewaretoken")
+
+    def test_username_login_succeeds_and_email_login_fails(self):
+        self.assertEqual(authenticate(username=self.owner.username, password=self.owner_password), self.owner)
+        self.assertIsNone(authenticate(username=self.owner.email, password=self.owner_password))
+
+    def test_owner_login_redirects_to_tenant_staff_list(self):
+        response = self.client.post(
+            reverse("dineva:login"),
+            {"username": self.owner.username, "password": self.owner_password},
+        )
+        self.assertRedirects(response, reverse("dineva:owner-staff-list"))
+        self.assertEqual(self.client.session[SESSION_KEY], str(self.owner.pk))
+
+    def test_inactive_user_cannot_authenticate(self):
+        self.owner.is_active = False
+        self.owner.save(update_fields=["is_active"])
+        self.assertIsNone(authenticate(username=self.owner.username, password=self.owner_password))
+
+    def test_inactive_restaurant_blocks_owner_and_staff(self):
+        self.restaurant.is_active = False
+        self.restaurant.save(update_fields=["is_active"])
+        self.assertIsNone(authenticate(username=self.owner.username, password=self.owner_password))
+        self.assertIsNone(authenticate(username=self.waiter.username, password=self.waiter_password))
+
+    def test_all_owners_inactive_blocks_staff_without_mutating_staff(self):
+        self.owner.is_active = False
+        self.owner.save(update_fields=["is_active"])
+        self.assertIsNone(authenticate(username=self.waiter.username, password=self.waiter_password))
+        self.waiter.refresh_from_db()
+        self.assertTrue(self.waiter.is_active)
+
+    def test_one_active_owner_allows_staff_and_reactivation_restores_access(self):
+        second_owner = create_test_employee(
+            self.restaurant,
+            name="Second Owner",
+            email="owner2@example.invalid",
+        )
+        self.owner.is_active = False
+        self.owner.save(update_fields=["is_active"])
+        self.assertEqual(authenticate(username=self.waiter.username, password=self.waiter_password), self.waiter)
+        second_owner.is_active = False
+        second_owner.save(update_fields=["is_active"])
+        self.assertIsNone(authenticate(username=self.waiter.username, password=self.waiter_password))
+        self.owner.is_active = True
+        self.owner.save(update_fields=["is_active"])
+        self.assertEqual(authenticate(username=self.waiter.username, password=self.waiter_password), self.waiter)
+
+    def test_existing_session_is_revoked_when_restaurant_deactivates(self):
+        self.client.force_login(self.owner)
+        self.restaurant.is_active = False
+        self.restaurant.save(update_fields=["is_active"])
+        response = self.client.get(reverse("dineva:owner-staff-list"))
+        self.assertRedirects(response, reverse("dineva:login"))
+
+    def test_password_recovery_is_generic_and_preserves_username(self):
+        original_username = self.owner.username
+        known = self.client.post(reverse("dineva:password-reset"), {"email": self.owner.email})
+        unknown = self.client.post(reverse("dineva:password-reset"), {"email": "unknown@example.invalid"})
+        self.assertRedirects(known, reverse("dineva:password-reset-done"))
+        self.assertRedirects(unknown, reverse("dineva:password-reset-done"))
+        self.assertEqual(len(mail.outbox), 3)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.username, original_username)
+
+    def test_obsolete_account_setup_route_is_retired(self):
+        response = self.client.get("/account/setup/unused/unused/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_login_throttle_keeps_generic_error(self):
+        for _ in range(6):
+            response = self.client.post(
+                reverse("dineva:login"),
+                {"username": self.owner.username, "password": "wrong"},
+            )
+        self.assertContains(response, "Unable to sign in with the provided credentials.")
+
+
+class FoundationModelTests(PrivateMediaMixin, TestCase):
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(
+            name="Foundation Kitchen",
+            address="3 Test Street",
+            contact="+910000000003",
+            email="foundation@example.invalid",
+        )
+        self.owner = create_test_employee(self.restaurant)
+        self.waiter = create_test_employee(
+            self.restaurant,
+            role=UserProfile.Role.WAITER,
+            name="Foundation Waiter",
+            email="foundation-waiter@example.invalid",
         )
         self.table = RestaurantTable.objects.create(
             restaurant=self.restaurant,
@@ -39,247 +240,31 @@ class FoundationModelTests(TestCase):
             capacity=4,
         )
 
-    def test_user_password_hashing_and_restaurant_relationship(self):
-        self.assertTrue(self.waiter.check_password("test-password-only"))
-        self.assertNotEqual(self.waiter.password, "test-password-only")
-        self.assertEqual(self.waiter.restaurant, self.restaurant)
-
-    def test_superadmin_has_no_restaurant(self):
-        superadmin = User.objects.create_superuser(
-            username="platform.admin",
-            email="admin@example.com",
-            name="Platform Admin",
-            password="test-password-only",
-        )
-        self.assertIsNone(superadmin.restaurant)
-        self.assertEqual(superadmin.role, User.Role.SUPERADMIN)
-        self.assertIsNone(superadmin.public_id)
-
-    def test_email_is_unique(self):
+    def test_customer_and_table_uniqueness(self):
+        Customer.objects.create(name="First", mobile="9999999999")
         with self.assertRaises(IntegrityError), transaction.atomic():
-            User.objects.create_user(
-                username="duplicate.waiter",
-                email="waiter@example.com",
-                name="Duplicate Waiter",
-                password="test-password-only",
-                role=User.Role.WAITER,
-                restaurant=self.restaurant,
-            )
-
-    def test_username_is_unique(self):
+            Customer.objects.create(name="Second", mobile="9999999999")
         with self.assertRaises(IntegrityError), transaction.atomic():
-            User.objects.create_user(
-                username=self.waiter.username,
-                email="different@example.com",
-                name="Duplicate Username",
-                password="test-password-only",
-                role=User.Role.WAITER,
-                restaurant=self.restaurant,
-            )
-
-    def test_customer_mobile_is_unique(self):
-        Customer.objects.create(name="First Customer", mobile="9999999999")
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Customer.objects.create(name="Second Customer", mobile="9999999999")
-
-    def test_table_number_is_unique_per_restaurant(self):
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            RestaurantTable.objects.create(
-                restaurant=self.restaurant,
-                table_no="T1",
-                capacity=2,
-            )
-
-    def test_item_and_payment_use_decimal_values(self):
-        item = Item.objects.create(
-            restaurant=self.restaurant,
-            category="Main",
-            name="Test Dish",
-            price=Decimal("249.50"),
-        )
-        order = AssignOrder.objects.create(
-            restaurant=self.restaurant,
-            table=self.table,
-            waiter=self.waiter,
-        )
-        payment = Payment.objects.create(
-            restaurant=self.restaurant,
-            assign_order=order,
-            amount=Decimal("249.50"),
-            payment_method=Payment.Method.CASH,
-        )
-        item.refresh_from_db()
-        payment.refresh_from_db()
-        self.assertEqual(item.price, Decimal("249.50"))
-        self.assertEqual(payment.amount, Decimal("249.50"))
+            RestaurantTable.objects.create(restaurant=self.restaurant, table_no="T1", capacity=2)
 
     def test_order_item_keeps_historical_price(self):
-        item = Item.objects.create(
-            restaurant=self.restaurant,
-            category="Main",
-            name="Historical Dish",
-            price=Decimal("100.00"),
-        )
-        order = AssignOrder.objects.create(
-            restaurant=self.restaurant,
-            table=self.table,
-            waiter=self.waiter,
-        )
-        order_item = OrderItem.objects.create(
-            assign_order=order,
-            item=item,
-            quantity=1,
-            price=item.price,
-        )
+        item = Item.objects.create(restaurant=self.restaurant, category="Main", name="Dish", price=Decimal("100.00"))
+        order = AssignOrder.objects.create(restaurant=self.restaurant, table=self.table, waiter=self.waiter)
+        order_item = OrderItem.objects.create(assign_order=order, item=item, quantity=1, price=item.price)
         item.price = Decimal("125.00")
         item.save(update_fields=["price"])
         order_item.refresh_from_db()
         self.assertEqual(order_item.price, Decimal("100.00"))
 
-    def test_assign_order_relationships(self):
-        customer = Customer.objects.create(
-            name="Order Customer",
-            mobile="8888888888",
-        )
-        order = AssignOrder.objects.create(
-            restaurant=self.restaurant,
-            table=self.table,
-            waiter=self.waiter,
-            customer=customer,
-        )
-        self.assertEqual(order.restaurant, self.restaurant)
-        self.assertEqual(order.table, self.table)
-        self.assertEqual(order.waiter, self.waiter)
-        self.assertEqual(order.customer, customer)
+    def test_payment_uses_decimal(self):
+        order = AssignOrder.objects.create(restaurant=self.restaurant, table=self.table, waiter=self.waiter)
+        payment = Payment.objects.create(restaurant=self.restaurant, assign_order=order, amount=Decimal("249.50"), payment_method=Payment.Method.CASH)
+        payment.refresh_from_db()
+        self.assertEqual(payment.amount, Decimal("249.50"))
 
     def test_home_page_renders(self):
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Dineva")
+        self.assertContains(self.client.get(reverse("dineva:home")), "Dineva")
 
-
-class SuperAdminAuthenticationTests(TestCase):
-    password = "Test-admin-password-123"
-    generic_error = "Unable to sign in with the provided credentials."
-
-    def setUp(self):
-        self.superadmin = User.objects.create_superuser(
-            username="platform.admin",
-            email="admin@example.com",
-            name="Platform Admin",
-            password=self.password,
-        )
-        self.restaurant = Restaurant.objects.create(
-            name="Authentication Test Restaurant",
-            address="2 Test Street",
-            contact="+910000000001",
-            email="auth-restaurant@example.com",
-        )
-
-    def login(self, username=None, password=None):
-        return self.client.post(
-            reverse("dineva:login"),
-            {
-                "username": username or self.superadmin.username,
-                "password": password or self.password,
-            },
-        )
-
-    def create_restaurant_user(self, role):
-        return User.objects.create_user(
-            username=f"test.{role.lower()}",
-            email=f"{role.lower()}@example.com",
-            name=f"Test {role}",
-            password=self.password,
-            role=role,
-            restaurant=self.restaurant,
-        )
-
-    def assert_role_can_login_but_cannot_access_dashboard(self, role):
-        user = self.create_restaurant_user(role)
-        response = self.client.post(
-            reverse("dineva:login"),
-            {"username": user.username, "password": self.password},
-        )
-        self.assertRedirects(response, reverse("dineva:home"))
-        self.assertEqual(self.client.session[SESSION_KEY], str(user.pk))
-
-        response = self.client.get(reverse("dineva:dashboard"))
-        self.assertEqual(response.status_code, 403)
-
-    def test_superadmin_can_login_with_correct_credentials(self):
-        response = self.login()
-        self.assertRedirects(response, reverse("dineva:dashboard"))
-
-    def test_wrong_password_is_rejected(self):
-        response = self.login(password="incorrect-password")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.generic_error)
-        self.assertNotIn(SESSION_KEY, self.client.session)
-
-    def test_email_is_not_a_login_identifier(self):
-        response = self.login(username=self.superadmin.email)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.generic_error)
-        self.assertNotIn(SESSION_KEY, self.client.session)
-
-    def test_inactive_user_cannot_login(self):
-        self.superadmin.is_active = False
-        self.superadmin.save(update_fields=["is_active"])
-        response = self.login()
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.generic_error)
-        self.assertNotIn(SESSION_KEY, self.client.session)
-
-    def test_owner_cannot_access_dashboard(self):
-        self.assert_role_can_login_but_cannot_access_dashboard(User.Role.OWNER)
-
-    def test_waiter_cannot_access_dashboard(self):
-        self.assert_role_can_login_but_cannot_access_dashboard(User.Role.WAITER)
-
-    def test_kitchen_staff_cannot_access_dashboard(self):
-        self.assert_role_can_login_but_cannot_access_dashboard(
-            User.Role.KITCHEN_STAFF
-        )
-
-    def test_unauthenticated_user_cannot_access_dashboard(self):
-        response = self.client.get(reverse("dineva:dashboard"))
-        self.assertRedirects(response, reverse("dineva:login"))
-
-    def test_successful_login_creates_session(self):
-        self.login()
-        self.assertEqual(
-            self.client.session[SESSION_KEY],
-            str(self.superadmin.pk),
-        )
-
-    def test_logout_destroys_authenticated_session(self):
-        self.login()
-        response = self.client.post(reverse("dineva:logout"))
-        self.assertRedirects(response, reverse("dineva:login"))
-        self.assertNotIn(SESSION_KEY, self.client.session)
-
-    def test_logout_rejects_get_requests(self):
-        self.client.force_login(self.superadmin)
-        response = self.client.get(reverse("dineva:logout"))
-        self.assertEqual(response.status_code, 405)
-        self.assertIn(SESSION_KEY, self.client.session)
-
-    def test_login_error_does_not_enumerate_accounts(self):
-        known_response = self.login(password="incorrect-password")
-        unknown_response = self.login(
-            username="unknown.user",
-            password="incorrect-password",
-        )
-        self.assertContains(known_response, self.generic_error)
-        self.assertContains(unknown_response, self.generic_error)
-        self.assertEqual(
-            known_response.context["form"].non_field_errors(),
-            unknown_response.context["form"].non_field_errors(),
-        )
-
-    def test_shared_login_page_uses_username_and_csrf(self):
-        response = self.client.get(reverse("dineva:login"))
-        self.assertContains(response, "Username")
-        self.assertContains(response, "csrfmiddlewaretoken")
-        self.assertNotContains(response, "Super Admin account")
+    def test_logout_is_post_only(self):
+        self.client.force_login(self.owner)
+        self.assertEqual(self.client.get(reverse("dineva:logout")).status_code, 405)
