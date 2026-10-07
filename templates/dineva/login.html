@@ -1,32 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Login | Dineva{% endblock %}
+{% block title %}Enter Dineva{% endblock %}
+{% block body_class %}interior-page auth-page{% endblock %}
 
 {% block content %}
-<section class="auth-section">
-    <div class="container">
+<section class="auth-stage">
+    <div class="auth-art" aria-hidden="true">
+        <div class="auth-art__type">D<br>IN<br>EV<br>A</div>
+        <p>Protected access / Restaurant systems</p>
+    </div>
+    <div class="auth-form-wrap">
         <div class="auth-panel">
-            <p class="eyebrow text-success">Dineva account</p>
-            <h1>Sign in to Dineva</h1>
+            <p class="section-code">D / Access<br>Secure session</p>
+            <h1>Enter your<br><em>workspace.</em></h1>
             <p class="auth-intro">Use your username and password to access Dineva.</p>
 
             <form method="post" action="{% url 'dineva:login' %}" novalidate>
                 {% csrf_token %}
-
                 {% if form.non_field_errors %}
-                    <div class="alert alert-danger" role="alert">
-                        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-                    </div>
+                    <div class="alert alert-danger" role="alert">{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
                 {% endif %}
-
-                <div class="mb-3">
-                    <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+                <div class="field-group">
+                    <label for="{{ form.username.id_for_label }}">Username</label>
                     {{ form.username }}
                     {% for error in form.username.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
                 </div>
-
-                <div class="mb-4">
-                    <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+                <div class="field-group">
+                    <label for="{{ form.password.id_for_label }}">Password</label>
                     {{ form.password }}
                     {% for error in form.password.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
                 </div>

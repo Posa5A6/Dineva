@@ -22,7 +22,8 @@
                 <button class="btn btn-dark" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Save Restaurant</button>
                 <a class="btn btn-outline-secondary" href="{% url 'dineva:dashboard' %}">Cancel</a>
             </div>
-        </form>
-    </div>
+        {% endfor %}
+        <div class="form-actions"><button class="form-submit" type="submit">Create restaurant <span aria-hidden="true">↗</span></button><a href="{% url 'dineva:dashboard' %}">Cancel</a></div>
+    </form>
 </section>
 {% endblock %}

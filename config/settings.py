@@ -35,7 +35,7 @@ def env_list(name, default=""):
 SECRET_KEY = os.environ.get("DINEVA_SECRET_KEY", "")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool("DINEVA_DEBUG", False)
+DEBUG = env_bool("DINEVA_DEBUG", True)
 
 ALLOWED_HOSTS = env_list("DINEVA_ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env_list("DINEVA_CSRF_TRUSTED_ORIGINS")

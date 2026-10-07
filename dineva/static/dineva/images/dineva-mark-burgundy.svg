@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Dineva threshold mark — burgundy</title>
+  <g fill="none" stroke="#6A2434" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M8 8h16l12 24-12 24H8l12-24L8 8Z"/>
+    <path d="M56 8H40L28 32l12 24h16L44 32 56 8Z"/>
+  </g>
+  <path fill="#6A2434" d="M30.5 29.5h3v5h-3z"/>
+</svg>

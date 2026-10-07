@@ -1,62 +1,141 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Dineva | Restaurant Operations{% endblock %}
+{% block title %}Dineva | Technology behind a well-run restaurant{% endblock %}
+{% block meta_description %}Dineva gives platform administrators a considered place to create restaurant workspaces and securely onboard owners and staff.{% endblock %}
+{% block body_class %}home-page{% endblock %}
+
+{% block extra_head %}
+<link rel="preload" href="{% static 'dineva/images/dineva-restaurant-cinematic.webp' %}" as="image" type="image/webp">
+<script>
+    if (new URLSearchParams(window.location.search).get('intro') === 'skip') {
+        document.documentElement.classList.add('intro-skip');
+    }
+</script>
+{% endblock %}
+
+{% block intro %}
+<div class="dineva-intro" data-dineva-intro data-intro-state="initial" aria-hidden="true">
+    <div class="intro-field" aria-hidden="true">
+        <div class="intro-meta">
+            <span>DINEVA / INTRO 01</span>
+            <span>Restaurant technology platform</span>
+            <span>India / 2026</span>
+        </div>
+
+        <svg class="intro-mark" viewBox="0 0 64 64" role="presentation">
+            <path pathLength="1" d="M8 8h16l12 24-12 24H8l12-24L8 8Z"></path>
+            <path pathLength="1" d="M56 8H40L28 32l12 24h16L44 32 56 8Z"></path>
+        </svg>
+
+        <div class="intro-sculpture" aria-label="Dineva">
+            <p class="intro-word">
+                <span class="intro-word__group intro-word__group--left" data-text="DIN">
+                    <span class="intro-word__depth" aria-hidden="true">DIN</span>
+                    <span class="intro-word__face">DIN</span>
+                </span>
+                <span class="intro-word__group intro-word__group--right" data-text="EVA">
+                    <span class="intro-word__depth" aria-hidden="true">EVA</span>
+                    <span class="intro-word__face">EVA</span>
+                </span>
+            </p>
+            <p class="intro-word intro-word--light" aria-hidden="true">
+                <span class="intro-word__group intro-word__group--left"><span>DIN</span></span>
+                <span class="intro-word__group intro-word__group--right"><span>EVA</span></span>
+            </p>
+            <span class="intro-seam" aria-hidden="true"></span>
+        </div>
+
+        <div class="intro-material">
+            <picture>
+                <source media="(max-width: 767px)" srcset="{% static 'dineva/images/dineva-restaurant-cinematic-mobile.webp' %}" type="image/webp">
+                <source srcset="{% static 'dineva/images/dineva-restaurant-cinematic.webp' %}" type="image/webp">
+                <img src="{% static 'dineva/images/dineva-restaurant-cinematic.jpg' %}" width="1600" height="900" alt="" decoding="async">
+            </picture>
+            <span></span>
+        </div>
+
+        <div class="intro-resolution">
+            <div class="intro-resolution__identity">
+                <img src="{% static 'dineva/images/dineva-mark-ivory.svg' %}" width="52" height="52" alt="">
+                <strong>DINEVA</strong>
+            </div>
+            <p>Technology behind a well-run restaurant.</p>
+        </div>
+
+        <div class="intro-rule"></div>
+        <p class="intro-caption">Structure / Access / People</p>
+    </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<section class="hero" style="--hero-image: url('{% static 'dineva/images/restaurant-operations-hero.png' %}');">
-    <div class="hero-shade" aria-hidden="true"></div>
-    <div class="container hero-content">
-        <p class="eyebrow">Restaurant management, connected</p>
-        <h1>Dineva</h1>
-        <p class="hero-copy">Keep tables, orders, kitchen progress, and payments moving together from one dependable workspace.</p>
-        <div class="d-flex flex-wrap gap-3">
-            <a class="btn btn-light btn-lg" href="#platform">Explore the platform <i class="bi bi-arrow-down" aria-hidden="true"></i></a>
-            <a class="btn btn-outline-light btn-lg" href="{% url 'dineva:login' %}">Staff login</a>
+<section class="studio-hero is-resolved" data-cinematic-hero data-hero-state="resolved" aria-labelledby="hero-title">
+    <div class="hero-material" aria-hidden="true">
+        <picture>
+            <source media="(max-width: 767px)" srcset="{% static 'dineva/images/dineva-restaurant-cinematic-mobile.webp' %}" type="image/webp">
+            <source srcset="{% static 'dineva/images/dineva-restaurant-cinematic.webp' %}" type="image/webp">
+            <img src="{% static 'dineva/images/dineva-restaurant-cinematic.jpg' %}" width="1600" height="900" alt="" fetchpriority="high" decoding="async">
+        </picture>
+        <span class="hero-material__veil"></span>
+        <span class="hero-material__scan"></span>
+    </div>
+
+    <div class="opening-sequence" aria-hidden="true">
+        <div class="opening-meta">
+            <span>DINEVA / 01</span>
+            <span>Quiet choreography</span>
+            <span>Restaurant systems</span>
+        </div>
+        <p class="opening-word" aria-label="Dineva">
+            <span>DI</span><span>NE</span><span>VA</span>
+        </p>
+        <svg class="opening-mark" viewBox="0 0 64 64" role="presentation">
+            <path pathLength="1" d="M8 8h16l12 24-12 24H8l12-24L8 8Z"></path>
+            <path pathLength="1" d="M56 8H40L28 32l12 24h16L44 32 56 8Z"></path>
+        </svg>
+        <p class="opening-note">Structure becomes atmosphere</p>
+    </div>
+
+    <div class="hero-composition shell">
+        <div class="hero-index" aria-hidden="true">
+            <span>01</span>
+            <span>Brand field</span>
+        </div>
+
+        <h1 id="hero-title" class="hero-title">
+            <span class="hero-title__line hero-title__line--one">The digital</span>
+            <span class="hero-title__line hero-title__line--two">layer behind</span>
+            <span class="hero-title__line hero-title__line--three">restaurants.</span>
+        </h1>
+
+        <div class="hero-context">
+            <p>Dineva helps platform administrators create restaurant workspaces, onboard owners, add staff, and give each person secure access to the right place.</p>
+            <div class="hero-actions">
+                <a class="action-link action-link--solid" href="{% url 'dineva:login' %}">Enter Dineva <span aria-hidden="true">↗</span></a>
+                <a class="action-link" href="#platform">See how it works <span aria-hidden="true">↓</span></a>
+            </div>
+        </div>
+
+        <div class="hero-foot" aria-hidden="true">
+            <span>Restaurant operations × digital craft</span>
+            <span>Scroll to explore</span>
         </div>
     </div>
 </section>
 
-<section class="platform-section" id="platform">
-    <div class="container">
-        <div class="section-heading">
-            <p class="eyebrow text-success">One operational picture</p>
-            <h2>Built around the rhythm of service</h2>
-            <p>From the first seated guest to the final payment, Dineva keeps every handoff clear.</p>
-        </div>
-        <div class="row g-4" id="operations">
-            <div class="col-md-4">
-                <article class="feature-card h-100">
-                    <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
-                    <h3>Floor control</h3>
-                    <p>See table availability and active dining sessions without losing the room’s pace.</p>
-                </article>
-            </div>
-            <div class="col-md-4">
-                <article class="feature-card h-100">
-                    <i class="bi bi-fire" aria-hidden="true"></i>
-                    <h3>Kitchen flow</h3>
-                    <p>Track each item from pending to served while preserving clear staff accountability.</p>
-                </article>
-            </div>
-            <div class="col-md-4">
-                <article class="feature-card h-100">
-                    <i class="bi bi-receipt" aria-hidden="true"></i>
-                    <h3>Reliable checkout</h3>
-                    <p>Keep historical prices and payment attempts tied to the correct restaurant session.</p>
-                </article>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="access-section" id="login">
-    <div class="container d-md-flex align-items-center justify-content-between gap-4">
+<section class="manifesto-section" aria-labelledby="manifesto-title">
+    <div class="shell manifesto-grid">
+        <p class="section-code">D / 02<br>The restaurant</p>
         <div>
-            <p class="eyebrow">Dineva workspace</p>
-            <h2>Ready for the next service.</h2>
+            <p class="section-kicker">A digital foundation before the first guest arrives</p>
+            <h2 id="manifesto-title">The restaurant setup, made clear.</h2>
         </div>
         <a class="btn btn-light btn-lg" href="{% url 'dineva:login' %}"><i class="bi bi-lock" aria-hidden="true"></i> Account login</a>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'dineva/js/dineva-intro.js' %}?v=3" defer></script>
 {% endblock %}

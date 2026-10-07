@@ -1,16 +1,23 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Dineva restaurant operations platform">
+    <meta name="description" content="{% block meta_description %}Dineva creates considered restaurant workspaces and secure access for owners and staff.{% endblock %}">
+    <meta name="theme-color" content="#09090b">
     <title>{% block title %}Dineva{% endblock %}</title>
+    <script>document.documentElement.classList.replace('no-js', 'js');</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'dineva/css/home.css' %}" rel="stylesheet">
+    <link href="{% static 'dineva/css/home.css' %}?v=17" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    {% block intro %}{% endblock %}
     <header class="site-header">
         <nav class="navbar navbar-expand-lg bg-white" aria-label="Main navigation">
             <div class="container">
@@ -42,8 +49,9 @@
             </div>
         </nav>
     </header>
+
     {% if messages %}
-        <div class="container message-stack" aria-live="polite">
+        <div class="message-stack shell" aria-live="polite">
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
                     {{ message }}
@@ -52,13 +60,22 @@
             {% endfor %}
         </div>
     {% endif %}
-    <main>{% block content %}{% endblock %}</main>
+
+    <main id="main-content">{% block content %}{% endblock %}</main>
+
     <footer class="site-footer">
-        <div class="container d-flex flex-column flex-md-row justify-content-between gap-2">
-            <span>Dineva</span>
-            <span>Restaurant operations, kept in sync.</span>
+        <div class="shell footer-grid">
+            <div class="footer-identity">
+                <img class="brand-symbol" src="{% static 'dineva/images/dineva-mark.svg' %}" width="34" height="34" alt="">
+                <span>DINEVA</span>
+            </div>
+            <p>Quiet structure for restaurant teams.</p>
+            <p class="footer-meta">Platform / Access / People<br>© 2026 Dineva</p>
         </div>
     </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'dineva/js/navigation.js' %}?v=2" defer></script>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>
