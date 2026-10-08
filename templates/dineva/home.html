@@ -131,7 +131,84 @@
             <p class="section-kicker">A digital foundation before the first guest arrives</p>
             <h2 id="manifesto-title">The restaurant setup, made clear.</h2>
         </div>
-        <a class="btn btn-light btn-lg" href="{% url 'dineva:login' %}"><i class="bi bi-lock" aria-hidden="true"></i> Account login</a>
+        <p class="manifesto-aside">Dineva gives platform administrators one clear place to create a restaurant workspace, connect an owner, add staff, and protect each account from the start.</p>
+        <figure class="manifesto-visual">
+            <img src="{% static 'dineva/images/restaurant-operations.webp' %}" width="1600" height="900" alt="A restaurant team serving guests in a contemporary dining room" loading="lazy" decoding="async">
+            <figcaption><span>The restaurant</span><span>Service in the room. Structure behind it.</span></figcaption>
+        </figure>
+    </div>
+</section>
+
+<section class="platform-stage" id="platform" aria-labelledby="platform-title">
+    <div class="shell">
+        <header class="stage-heading">
+            <p class="section-code">D / 03<br>The workspace</p>
+            <h2 id="platform-title">What Dineva provides.</h2>
+            <p>Create the restaurant workspace, assign its owner, add the team, and keep role-based access visible in one calm administrative flow.</p>
+        </header>
+
+        <div class="product-frame" aria-label="Dineva platform capability preview">
+            <div class="product-frame__bar">
+                <span>DINEVA / SUPER ADMIN</span>
+                <span>Restaurant directory</span>
+                <span aria-hidden="true">●</span>
+            </div>
+            <div class="product-frame__body">
+                <aside class="product-frame__rail" aria-hidden="true">
+                    <span class="product-frame__rail-title">Workspace sequence / verified capabilities</span>
+                    <span>Overview</span><span class="is-active">Restaurants</span><span>Owners</span><span>Staff</span>
+                </aside>
+                <div class="product-frame__canvas">
+                    <div class="ui-display">Restaurant<br>foundations</div>
+                    <div class="ui-ledger">
+                        <div><span>01</span><strong>Create workspace</strong><small>Restaurant record</small></div>
+                        <div><span>02</span><strong>Assign owner</strong><small>Secure invitation</small></div>
+                        <div><span>03</span><strong>Add staff</strong><small>Role-based access</small></div>
+                        <div><span>04</span><strong>Activate account</strong><small>Protected setup</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="sequence-section" id="sequence" aria-labelledby="sequence-title">
+    <div class="shell sequence-layout">
+        <div class="sequence-heading">
+            <p class="section-code">D / 04<br>How it works</p>
+            <h2 id="sequence-title">A clear path from restaurant to team.</h2>
+        </div>
+        <ol class="sequence-list">
+            <li><span>D1</span><div><strong>Create</strong><p>Set up the restaurant workspace and its core contact information.</p></div></li>
+            <li><span>D2</span><div><strong>Onboard</strong><p>Connect an accountable owner through a secure invitation.</p></div></li>
+            <li><span>D3</span><div><strong>Build the team</strong><p>Add waiter and kitchen staff accounts with explicit roles.</p></div></li>
+            <li><span>D4</span><div><strong>Manage access</strong><p>Let every person establish their own protected password.</p></div></li>
+        </ol>
+    </div>
+</section>
+
+<section class="roles-section" aria-labelledby="roles-title">
+    <div class="shell">
+        <div class="roles-intro">
+            <p class="section-code">D / 05<br>Who it is for</p>
+            <h2 id="roles-title">Every person knows<br>where they belong.</h2>
+        </div>
+        <div class="roles-type" aria-label="Supported account roles">
+            <span>PLATFORM ADMIN</span>
+            <span>OWNER</span>
+            <span>WAITER</span>
+            <span>KITCHEN STAFF</span>
+        </div>
+        <p class="roles-note">Platform administrators create the workspace. Owners and staff join through secure account setup with access shaped by their role.</p>
+    </div>
+</section>
+
+<section class="closing-section" aria-labelledby="closing-title">
+    <div class="closing-material" aria-hidden="true"></div>
+    <div class="shell closing-inner">
+        <p class="section-code">D / 06<br>The brand</p>
+        <h2 id="closing-title">Start with a clearer<br><em>restaurant workspace.</em></h2>
+        <a class="action-link action-link--solid" href="{% url 'dineva:login' %}">Enter Dineva <span aria-hidden="true">↗</span></a>
     </div>
 </section>
 {% endblock %}
