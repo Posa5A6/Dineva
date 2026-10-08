@@ -406,6 +406,16 @@ def _dashboard_context():
             ),
             distinct=True,
         ),
+        waiter_count=Count(
+            "user_profiles",
+            filter=Q(user_profiles__role=UserProfile.Role.WAITER),
+            distinct=True,
+        ),
+        kitchen_staff_count=Count(
+            "user_profiles",
+            filter=Q(user_profiles__role=UserProfile.Role.KITCHEN_STAFF),
+            distinct=True,
+        ),
     ).order_by("name")
     role_counts = UserProfile.objects.aggregate(
         owner_count=Count("user_id", filter=Q(role=UserProfile.Role.OWNER)),

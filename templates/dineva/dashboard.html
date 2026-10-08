@@ -1,96 +1,146 @@
 {% extends "base.html" %}
 
-{% block title %}Workspace | Dineva{% endblock %}
-{% block body_class %}interior-page workspace-page{% endblock %}
+{% block title %}Dashboard | Dineva{% endblock %}
+{% block body_class %}workspace-page admin-dashboard-page{% endblock %}
 
 {% block content %}
-<section class="dashboard-section">
-    <div class="container">
-        <div class="dashboard-heading">
+<section class="admin-dashboard">
+    <header class="admin-page-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p>Platform overview and restaurant management.</p>
+        </div>
+        <a class="btn btn-primary dineva-primary-action" href="{% url 'dineva:restaurant-add' %}">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            Add Restaurant
+        </a>
+    </header>
+
+    <div class="admin-kpi-grid" aria-label="Platform totals">
+        <article class="admin-kpi-card">
             <div>
-                <p class="eyebrow text-success">Dineva platform</p>
-                <h1>Super Admin</h1>
-                <p>{{ request.user.name }} · {{ request.user.email }}</p>
+                <span>Total Restaurants</span>
+                <strong>{{ restaurant_count }}</strong>
+                <small>Restaurant workspaces</small>
             </div>
-            <form method="post" action="{% url 'dineva:logout' %}">
-                {% csrf_token %}
-                <button class="btn btn-outline-dark" type="submit">
-                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout
-                </button>
-            </form>
-        </div>
-
-        <nav class="management-nav" aria-label="Super Admin management">
-            <a href="{% url 'dineva:restaurants' %}">Restaurants</a>
-            <a href="{% url 'dineva:restaurant-add' %}">Add Restaurant</a>
-            <a href="{% url 'dineva:owner-list' %}">Owners</a>
-            <a href="{% url 'dineva:owner-add' %}">Add Owner</a>
-            <a href="{% url 'dineva:staff-list' %}">Staff</a>
-            <a href="{% url 'dineva:staff-add' %}">Add Staff</a>
-        </nav>
-        <p class="workspace-user">Signed in as<br><strong>{{ request.user.name }}</strong><br>{{ request.user.email }}</p>
-    </aside>
-
-    <div class="workspace-main">
-        <header class="workspace-heading">
+            <i class="bi bi-shop" aria-hidden="true"></i>
+        </article>
+        <article class="admin-kpi-card">
             <div>
-                <p class="section-kicker">Platform overview / Live directory</p>
-                <h1>Restaurant<br><em>foundations.</em></h1>
+                <span>Total Owners</span>
+                <strong>{{ owner_count }}</strong>
+                <small>Restaurant owner accounts</small>
             </div>
-            <a class="action-link action-link--solid" href="{% url 'dineva:restaurant-add' %}">Add restaurant <span aria-hidden="true">＋</span></a>
-        </header>
+            <i class="bi bi-person-badge" aria-hidden="true"></i>
+        </article>
+        <article class="admin-kpi-card">
+            <div>
+                <span>Total Waiters</span>
+                <strong>{{ waiter_count }}</strong>
+                <small>Waiter staff accounts</small>
+            </div>
+            <i class="bi bi-person-lines-fill" aria-hidden="true"></i>
+        </article>
+        <article class="admin-kpi-card">
+            <div>
+                <span>Total Kitchen Staff</span>
+                <strong>{{ kitchen_count }}</strong>
+                <small>Kitchen staff accounts</small>
+            </div>
+            <i class="bi bi-egg-fried" aria-hidden="true"></i>
+        </article>
+    </div>
 
-        <div class="metric-ledger" aria-label="Platform totals">
-            <div><span>Restaurants</span><strong>{{ restaurant_count|stringformat:"02d" }}</strong></div>
-            <div><span>Owners</span><strong>{{ owner_count|stringformat:"02d" }}</strong></div>
-            <div><span>Waiters</span><strong>{{ waiter_count|stringformat:"02d" }}</strong></div>
-            <div><span>Kitchen staff</span><strong>{{ kitchen_count|stringformat:"02d" }}</strong></div>
+    <section class="admin-panel admin-quick-actions" aria-labelledby="quick-actions-title">
+        <div class="admin-panel__heading">
+            <div>
+                <h2 id="quick-actions-title">Quick Actions</h2>
+                <p>Create the platform records used most often.</p>
+            </div>
+        </div>
+        <div class="admin-action-row">
+            <a class="btn btn-primary dineva-primary-action" href="{% url 'dineva:restaurant-add' %}">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Add Restaurant
+            </a>
+            <a class="btn btn-outline-secondary" href="{% url 'dineva:owner-add' %}">
+                <i class="bi bi-person-plus" aria-hidden="true"></i>
+                Add Owner
+            </a>
+            <a class="btn btn-outline-secondary" href="{% url 'dineva:staff-add' %}">
+                <i class="bi bi-people" aria-hidden="true"></i>
+                Add Staff
+            </a>
+        </div>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="restaurant-overview-title">
+        <div class="admin-panel__heading">
+            <div>
+                <h2 id="restaurant-overview-title">Restaurant Overview</h2>
+                <p>{{ restaurant_count }} restaurant{{ restaurant_count|pluralize }} currently registered.</p>
+            </div>
+            {% if restaurants %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'dineva:restaurants' %}">Manage Restaurants</a>
+            {% endif %}
         </div>
 
-        <div class="directory-heading">
-            <p>Directory</p><span>{{ restaurant_count }} workspace{{ restaurant_count|pluralize }}</span>
-        </div>
-        <div class="directory-table-wrap">
-            <table class="directory-table">
-                <thead><tr><th>Restaurant</th><th>Contact</th><th>Status</th><th>Owners</th><th>Staff</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
-                <tbody>
-<<<<<<< Updated upstream
+        {% if restaurants %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Restaurant</th>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Owners</th>
+                            <th>Waiters</th>
+                            <th>Kitchen Staff</th>
+                            <th>Status</th>
+                            <th><span class="visually-hidden">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     {% for restaurant in restaurants %}
                         <tr>
-                            <td class="fw-semibold">{{ restaurant.name }}</td>
+                            <td>
+                                <strong>{{ restaurant.name }}</strong>
+                                <small>{{ restaurant.address }}</small>
+                            </td>
                             <td>{{ restaurant.contact }}</td>
                             <td>{{ restaurant.email }}</td>
-                            <td>{% if restaurant.is_active %}<span class="status status-active">Active</span>{% else %}<span class="status status-inactive">Inactive</span>{% endif %}</td>
                             <td>{{ restaurant.owner_count }}</td>
-                            <td>{{ restaurant.staff_count }}</td>
+                            <td>{{ restaurant.waiter_count }}</td>
+                            <td>{{ restaurant.kitchen_staff_count }}</td>
                             <td>
-                                <a href="{% url 'dineva:restaurant-edit' restaurant.id %}" class="table-action">Edit</a>
-                                <form method="post" action="{% url 'dineva:restaurant-status' restaurant.id %}" class="d-inline">
+                                {% if restaurant.is_active %}
+                                    <span class="badge rounded-pill text-bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge rounded-pill text-bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="admin-table-actions">
+                                <a href="{% url 'dineva:restaurant-edit' restaurant.id %}">Edit</a>
+                                <form method="post" action="{% url 'dineva:restaurant-status' restaurant.id %}">
                                     {% csrf_token %}
-                                    <button class="btn btn-link table-action p-0" type="submit">{% if restaurant.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+                                    <button type="submit">{% if restaurant.is_active %}Deactivate{% else %}Activate{% endif %}</button>
                                 </form>
                             </td>
                         </tr>
-                    {% empty %}
-                        <tr><td colspan="7" class="empty-state">No restaurants have been added.</td></tr>
                     {% endfor %}
-=======
-                {% for restaurant in restaurants %}
-                    <tr>
-                        <td><strong>{{ restaurant.name }}</strong><small>{{ restaurant.email }}</small></td>
-                        <td>{{ restaurant.contact }}</td>
-                        <td><span class="status-dot {% if restaurant.is_active %}is-active{% endif %}"></span>{% if restaurant.is_active %}Active{% else %}Inactive{% endif %}</td>
-                        <td>{{ restaurant.owner_count|stringformat:"02d" }}</td>
-                        <td>{{ restaurant.staff_count|stringformat:"02d" }}</td>
-                        <td><a href="{% url 'dineva:owner-add' %}">Add owner ↗</a></td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="6" class="empty-state">No restaurant workspaces have been created yet.</td></tr>
-                {% endfor %}
->>>>>>> Stashed changes
-                </tbody>
-            </table>
-        </div>
-    </div>
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="admin-empty-state">
+                <h3>No restaurants have been added yet.</h3>
+                <p>Create the first restaurant workspace to start onboarding owners and staff.</p>
+                <a class="btn btn-primary dineva-primary-action" href="{% url 'dineva:restaurant-add' %}">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    Add Restaurant
+                </a>
+            </div>
+        {% endif %}
+    </section>
 </section>
 {% endblock %}

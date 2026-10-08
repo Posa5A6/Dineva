@@ -83,6 +83,20 @@ class SuperAdminManagementTests(PrivateMediaMixin, TestCase):
         self.admin.is_superuser = False
         self.assertFalse(is_superadmin(self.admin))
 
+    def test_superadmin_sees_common_shell_and_menu(self):
+        response = self.client.get(reverse("dineva:dashboard"))
+        self.assertContains(response, 'class="app-topbar"', html=False)
+        self.assertContains(response, 'id="appSidebar"', html=False)
+        self.assertContains(response, "Platform Admin")
+        self.assertContains(response, "Dashboard")
+        self.assertContains(response, "Restaurants")
+        self.assertContains(response, "Add Restaurant")
+        self.assertContains(response, "Owners")
+        self.assertContains(response, "Staff")
+        self.assertContains(response, "Home")
+        self.assertContains(response, "Logout")
+        self.assertContains(response, "csrfmiddlewaretoken")
+
     def test_superadmin_can_create_and_edit_restaurant(self):
         response = self.client.post(
             reverse("dineva:restaurant-add"),
@@ -270,6 +284,13 @@ class OwnerTenantManagementTests(PrivateMediaMixin, TestCase):
         self.assertNotContains(response, self.other_staff.user.name)
         self.assertNotContains(response, "ID Proof")
 
+    def test_owner_does_not_see_superadmin_sidebar(self):
+        response = self.client.get(reverse("dineva:owner-staff-list"))
+        self.assertContains(response, 'id="appSidebar"', html=False)
+        self.assertNotContains(response, "Platform Admin")
+        self.assertNotContains(response, "Add Restaurant")
+        self.assertNotContains(response, "Owners")
+
     def test_owner_cross_tenant_details_return_404(self):
         response = self.client.get(reverse("dineva:owner-staff-detail", args=[self.other_staff.user_id]))
         self.assertEqual(response.status_code, 404)
@@ -282,6 +303,8 @@ class OwnerTenantManagementTests(PrivateMediaMixin, TestCase):
         self.assertEqual(self.client.get(reverse("dineva:id-proof-download", args=[self.staff.user_id])).status_code, 403)
         self.assertEqual(self.client.get(reverse("dineva:owner-staff-list")).status_code, 403)
         self.assertEqual(self.client.get(reverse("dineva:dashboard")).status_code, 403)
+        response = self.client.get(reverse("dineva:dashboard"))
+        self.assertNotContains(response, "Platform Admin", status_code=403)
 
     def test_owner_can_update_only_staff_photo(self):
         original_name = self.staff.user.name
@@ -304,6 +327,22 @@ class OwnerTenantManagementTests(PrivateMediaMixin, TestCase):
         for endpoint in endpoints:
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(self.client.get(reverse(f"dineva:{endpoint}")).status_code, 403)
+
+    def test_waiter_and_kitchen_staff_cannot_access_superadmin_endpoints(self):
+        kitchen = create_employee(
+            **employee_kwargs(
+                self.restaurant,
+                role=UserProfile.Role.KITCHEN_STAFF,
+                name="Own Kitchen",
+                email="own-kitchen@example.invalid",
+            )
+        )
+        endpoints = ["dashboard", "restaurants", "restaurant-add", "owner-list", "owner-add", "staff-list", "staff-add"]
+        for user in (self.staff.user, kitchen):
+            self.client.force_login(user)
+            for endpoint in endpoints:
+                with self.subTest(user=user.email, endpoint=endpoint):
+                    self.assertEqual(self.client.get(reverse(f"dineva:{endpoint}")).status_code, 403)
 
 
 class UploadValidationTests(PrivateMediaMixin, TestCase):

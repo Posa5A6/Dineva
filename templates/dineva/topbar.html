@@ -1,0 +1,27 @@
+{% load static %}
+<header class="app-topbar">
+    <div class="app-topbar__left">
+        <button class="app-menu-toggle" type="button" aria-controls="appSidebar" aria-expanded="true" aria-label="Collapse navigation">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+        <a class="app-brand" href="{% url 'dineva:dashboard' %}" aria-label="Dineva dashboard">
+            <img src="{% static 'dineva/images/dineva-mark-ivory.svg' %}" width="34" height="34" alt="">
+            <span>Dineva</span>
+        </a>
+    </div>
+    <nav class="app-topbar__actions" aria-label="Account actions">
+        <a href="{% url 'dineva:password-reset' %}">Change Password</a>
+        <a href="{% url 'dineva:home' %}#platform">Help</a>
+        <span class="app-user-meta">
+            <strong>{{ request.user.name|default:request.user.username }}</strong>
+            <small>{{ request.user.profile.get_role_display }}</small>
+        </span>
+        <form method="post" action="{% url 'dineva:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
+        <span class="app-user-chip" title="{{ request.user.email }}">
+            <span>{{ request.user.name|default:request.user.username|slice:":1" }}</span>
+        </span>
+    </nav>
+</header>

@@ -5,77 +5,127 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{% block meta_description %}Dineva creates considered restaurant workspaces and secure access for owners and staff.{% endblock %}">
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#241116">
     <title>{% block title %}Dineva{% endblock %}</title>
     <script>document.documentElement.classList.replace('no-js', 'js');</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="{% static 'dineva/css/home.css' %}?v=17" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{% static 'dineva/css/home.css' %}?v=25" rel="stylesheet">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+{% with route_name=request.resolver_match.url_name %}
+<body class="{% if user.is_authenticated and route_name != 'home' %}app-shell-page {% endif %}{% block body_class %}{% endblock %}">
     <a class="skip-link" href="#main-content">Skip to content</a>
     {% block intro %}{% endblock %}
-    <header class="site-header">
-        <nav class="navbar navbar-expand-lg bg-white" aria-label="Main navigation">
-            <div class="container">
-                <a class="navbar-brand" href="{% url 'dineva:home' %}">Dineva<span>.</span></a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="mainNav">
-                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
-                        <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#platform">Platform</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#operations">Operations</a></li>
-                        {% if user.is_authenticated %}
-                            {% if user.is_superuser and user.profile.role == "SUPERADMIN" %}
-                                <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:dashboard' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a></li>
-                            {% elif user.profile.role == "OWNER" %}
-                                <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:owner-staff-list' %}"><i class="bi bi-people" aria-hidden="true"></i> Staff</a></li>
-                            {% endif %}
-                            <li class="nav-item">
-                                <form method="post" action="{% url 'dineva:logout' %}">
-                                    {% csrf_token %}
-                                    <button class="btn btn-outline-dark" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</button>
-                                </form>
-                            </li>
-                        {% else %}
-                            <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:login' %}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login</a></li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
 
-    {% if messages %}
-        <div class="message-stack shell" aria-live="polite">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    {% if user.is_authenticated and route_name != "home" %}
+        {% include "dineva/topbar.html" %}
+        <div class="app-layout">
+            {% include "dineva/sidebar.html" %}
+            <div class="app-content-wrap">
+                {% if messages %}
+                    <div class="message-stack app-message-stack" aria-live="polite">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <main id="main-content" class="app-main">
+                    <nav class="app-breadcrumb" aria-label="Breadcrumb">
+                        <a href="{% url 'dineva:dashboard' %}">Home</a>
+                        <span aria-hidden="true">/</span>
+                        <span aria-current="page">
+                            {% if route_name == "dashboard" %}Dashboard
+                            {% elif route_name == "restaurants" %}Restaurants
+                            {% elif route_name == "restaurant-add" %}Add Restaurant
+                            {% elif route_name == "restaurant-edit" %}Edit Restaurant
+                            {% elif route_name == "owner-list" %}Owners
+                            {% elif route_name == "owner-add" %}Add Owner
+                            {% elif route_name == "staff-list" or route_name == "owner-staff-list" %}Staff
+                            {% elif route_name == "staff-add" or route_name == "owner-staff-add" %}Add Staff
+                            {% elif route_name == "employee-detail" or route_name == "owner-staff-detail" %}Employee
+                            {% elif route_name == "employee-edit" %}Edit Employee
+                            {% elif route_name == "owner-staff-photo" %}Update Photo
+                            {% elif route_name == "password-reset" %}Change Password
+                            {% else %}Workspace{% endif %}
+                        </span>
+                    </nav>
+    {% else %}
+        <header class="site-header">
+            <nav class="navbar navbar-expand-lg bg-white" aria-label="Main navigation">
+                <div class="container">
+                    <a class="navbar-brand" href="{% url 'dineva:home' %}">Dineva<span>.</span></a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="mainNav">
+                        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
+                            <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#platform">Platform</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'dineva:home' %}#operations">Operations</a></li>
+                            {% if user.is_authenticated %}
+                                {% if user.is_superuser and user.profile.role == "SUPERADMIN" %}
+                                    <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:dashboard' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a></li>
+                                {% elif user.profile.role == "OWNER" %}
+                                    <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:owner-staff-list' %}"><i class="bi bi-people" aria-hidden="true"></i> Staff</a></li>
+                                {% endif %}
+                                <li class="nav-item">
+                                    <form method="post" action="{% url 'dineva:logout' %}">
+                                        {% csrf_token %}
+                                        <button class="btn btn-outline-dark" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</button>
+                                    </form>
+                                </li>
+                            {% else %}
+                                <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:login' %}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
                 </div>
-            {% endfor %}
-        </div>
+            </nav>
+        </header>
+
+        {% if messages %}
+            <div class="message-stack shell" aria-live="polite">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <main id="main-content">
     {% endif %}
 
-    <main id="main-content">{% block content %}{% endblock %}</main>
+    {% block content %}{% endblock %}
 
-    <footer class="site-footer">
-        <div class="shell footer-grid">
-            <div class="footer-identity">
-                <img class="brand-symbol" src="{% static 'dineva/images/dineva-mark.svg' %}" width="34" height="34" alt="">
-                <span>DINEVA</span>
+    {% if user.is_authenticated and route_name != "home" %}
+                </main>
             </div>
-            <p>Quiet structure for restaurant teams.</p>
-            <p class="footer-meta">Platform / Access / People<br>© 2026 Dineva</p>
         </div>
-    </footer>
+    {% else %}
+        </main>
+        <footer class="site-footer">
+            <div class="shell footer-grid">
+                <div class="footer-identity">
+                    <img class="brand-symbol" src="{% static 'dineva/images/dineva-mark.svg' %}" width="34" height="34" alt="">
+                    <span>DINEVA</span>
+                </div>
+                <p>Quiet structure for restaurant teams.</p>
+                <p class="footer-meta">Platform / Access / People<br>© 2026 Dineva</p>
+            </div>
+        </footer>
+    {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'dineva/js/navigation.js' %}?v=2" defer></script>
+    <script src="{% static 'dineva/js/navigation.js' %}?v=3" defer></script>
     {% block extra_scripts %}{% endblock %}
 </body>
+{% endwith %}
 </html>

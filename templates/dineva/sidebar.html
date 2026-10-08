@@ -1,0 +1,38 @@
+<aside class="app-sidebar" id="appSidebar" aria-label="Application navigation">
+    <div class="app-sidebar__scroll">
+        {% if user.profile.role == "SUPERADMIN" %}
+            <p class="app-sidebar__section">Platform Admin</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'dineva:dashboard' %}">
+                    <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+            </nav>
+
+            <p class="app-sidebar__section">Restaurants</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'restaurants' %}is-active{% endif %}" href="{% url 'dineva:restaurants' %}">
+                    <i class="bi bi-shop" aria-hidden="true"></i>
+                    <span>Restaurants</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'restaurant-add' %}is-active{% endif %}" href="{% url 'dineva:restaurant-add' %}">
+                    <i class="bi bi-plus-square" aria-hidden="true"></i>
+                    <span>Add Restaurant</span>
+                </a>
+            </nav>
+
+            <p class="app-sidebar__section">Users</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'owner-list' %}is-active{% endif %}" href="{% url 'dineva:owner-list' %}">
+                    <i class="bi bi-person-badge" aria-hidden="true"></i>
+                    <span>Owners</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'staff-list' %}is-active{% endif %}" href="{% url 'dineva:staff-list' %}">
+                    <i class="bi bi-people" aria-hidden="true"></i>
+                    <span>Staff</span>
+                </a>
+            </nav>
+        {% endif %}
+    </div>
+</aside>
+<button class="app-sidebar-backdrop" type="button" aria-label="Close navigation"></button>

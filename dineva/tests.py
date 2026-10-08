@@ -268,3 +268,8 @@ class FoundationModelTests(PrivateMediaMixin, TestCase):
     def test_logout_is_post_only(self):
         self.client.force_login(self.owner)
         self.assertEqual(self.client.get(reverse("dineva:logout")).status_code, 405)
+
+    def test_logout_requires_csrf_token(self):
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.owner)
+        self.assertEqual(csrf_client.post(reverse("dineva:logout")).status_code, 403)
