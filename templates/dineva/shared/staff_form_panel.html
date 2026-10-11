@@ -1,0 +1,188 @@
+<section class="sa-staff-form" aria-labelledby="staff-form-title">
+    <header class="sa-page-heading">
+        <div>
+            <p class="sa-eyebrow">{{ staff_form_eyebrow }}</p>
+            <h1 id="staff-form-title">{{ staff_form_title }}</h1>
+            <p>{{ staff_form_description }}</p>
+        </div>
+        <a class="btn sa-btn-secondary" href="{{ staff_list_url }}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Staff
+        </a>
+    </header>
+
+    {% if staff_form_warning %}
+        <div class="alert alert-warning sa-form-alert" role="alert">
+            {{ staff_form_warning }}
+            {% if staff_form_warning_url %}
+                <a href="{{ staff_form_warning_url }}">{{ staff_form_warning_label }}</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="sa-form-card" novalidate data-sa-staff-form>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger sa-form-alert" role="alert">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="alert alert-warning sa-form-alert" role="alert">
+                Please review the highlighted fields and try again.
+            </div>
+        {% endif %}
+
+        <section class="sa-form-section" aria-labelledby="staff-info-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="staff-info-title">Staff Information</h2>
+                    <p>Choose the staff role and enter the employee's required profile details.</p>
+                </div>
+            </div>
+
+            <div class="sa-form-grid">
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.staff_type.id_for_label }}">Staff Type <span aria-hidden="true">*</span></label>
+                    {{ form.staff_type }}
+                    {% for error in form.staff_type.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">Full Name <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-person" aria-hidden="true"></i>
+                        {{ form.name }}
+                    </div>
+                    {% for error in form.name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.email.id_for_label }}">Email <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        {{ form.email }}
+                    </div>
+                    {% for error in form.email.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.contact.id_for_label }}">Contact Number <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-telephone" aria-hidden="true"></i>
+                        {{ form.contact }}
+                    </div>
+                    {% for error in form.contact.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field sa-field--full">
+                    <label class="form-label" for="{{ form.address.id_for_label }}">Address <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell sa-input-shell--textarea">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                        {{ form.address }}
+                    </div>
+                    {% for error in form.address.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        {% if form.restaurant %}
+            <section class="sa-form-section" aria-labelledby="staff-restaurant-title">
+                <div class="sa-form-section__header">
+                    <span class="sa-form-section__icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="staff-restaurant-title">Restaurant Assignment</h2>
+                        <p>Staff can only be assigned to restaurants that are currently active.</p>
+                    </div>
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.restaurant.id_for_label }}">Restaurant <span aria-hidden="true">*</span></label>
+                    {{ form.restaurant }}
+                    {% for error in form.restaurant.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="sa-form-section" aria-labelledby="staff-photo-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-camera" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="staff-photo-title">Profile Photo</h2>
+                    <p>Upload a profile photo. Server validation verifies image type, size, and content.</p>
+                </div>
+            </div>
+
+            <div class="sa-staff-upload">
+                <div class="sa-staff-photo-preview" data-sa-staff-photo-preview>
+                    <span aria-hidden="true"><i class="bi bi-camera"></i></span>
+                    <p>No photo selected</p>
+                </div>
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.photo.id_for_label }}">Profile Photo <span aria-hidden="true">*</span></label>
+                    {{ form.photo }}
+                    <div class="form-text">Accepted formats: JPG, JPEG, PNG. Maximum size: 5 MB.</div>
+                    {% for error in form.photo.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="staff-proof-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-file-earmark-lock" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="staff-proof-title">Identity Verification</h2>
+                    <p>Store one private government-issued ID proof for the staff member.</p>
+                </div>
+            </div>
+
+            <div class="sa-form-grid">
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.id_proof_type.id_for_label }}">ID Proof Type <span aria-hidden="true">*</span></label>
+                    {{ form.id_proof_type }}
+                    {% for error in form.id_proof_type.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.id_proof_file.id_for_label }}">Private Document Upload <span aria-hidden="true">*</span></label>
+                    {{ form.id_proof_file }}
+                    <div class="form-text">Accepted formats: JPG, JPEG, PNG, PDF. Maximum size: 20 MB.</div>
+                    <div class="sa-proof-file" data-sa-staff-proof-name>No document selected</div>
+                    {% for error in form.id_proof_file.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="staff-access-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-info-circle" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="staff-access-title">Account Access</h2>
+                    <p>Dineva provisions credentials and access details automatically.</p>
+                </div>
+            </div>
+
+            <ul class="sa-account-note">
+                <li>Username is automatically generated from the staff member's name.</li>
+                <li>Public ID is generated according to the selected staff type.</li>
+                <li>A strong random password is generated, hashed, and sent in the Welcome Email.</li>
+                <li>The ID proof remains private and is not included in email.</li>
+            </ul>
+        </section>
+
+        <div class="sa-form-actions">
+            <button class="btn sa-btn-primary" type="submit" data-sa-submit{% if staff_submit_disabled %} disabled{% endif %}>
+                <i class="bi bi-check2" aria-hidden="true"></i>
+                Create Staff
+            </button>
+            <a class="btn sa-btn-secondary" href="{{ staff_list_url }}">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                Cancel
+            </a>
+        </div>
+    </form>
+</section>

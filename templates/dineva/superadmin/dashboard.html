@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Super Admin Dashboard | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-dashboard-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=2" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-dashboard" aria-labelledby="sa-dashboard-title">
+    <h1 id="sa-dashboard-title" class="visually-hidden">Super Admin Dashboard</h1>
+
+    <section class="sa-profile-card" aria-labelledby="sa-profile-title">
+        <div class="sa-profile-card__identity">
+            {% if superadmin_profile.photo %}
+                <img class="sa-avatar sa-avatar--lg" src="{% url 'dineva:employee-photo' request.user.id %}" alt="{{ request.user.name }} profile photo">
+            {% else %}
+                <span class="sa-avatar sa-avatar--lg" aria-hidden="true">
+                    {{ request.user.name|default:request.user.username|slice:":1"|upper }}
+                </span>
+            {% endif %}
+            <div class="sa-profile-card__copy">
+                <p class="sa-eyebrow">Super Admin Profile</p>
+                <h2 id="sa-profile-title">{{ request.user.name }}</h2>
+                <div class="sa-profile-card__meta">
+                    <span>@{{ request.user.username }}</span>
+                    <span>{{ request.user.email }}</span>
+                    <span>{{ superadmin_profile.get_role_display|default:"Super Admin" }}</span>
+                </div>
+            </div>
+        </div>
+        <span class="sa-profile-card__badge">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            Platform access
+        </span>
+    </section>
+
+    <section class="sa-quick-actions" aria-labelledby="sa-quick-actions-title">
+        <div class="sa-section-heading">
+            <p class="sa-eyebrow">Quick Actions</p>
+            <h2 id="sa-quick-actions-title">Create and manage core records</h2>
+        </div>
+        <div class="sa-action-grid">
+            <a class="sa-action-card sa-action-card--primary" href="{% url 'dineva:restaurant-add' %}">
+                <span class="sa-action-card__icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                <span class="sa-action-card__body">
+                    <strong>Add Restaurant</strong>
+                    <small>Create a restaurant workspace.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="sa-action-card" href="{% url 'dineva:owner-add' %}">
+                <span class="sa-action-card__icon"><i class="bi bi-person-plus" aria-hidden="true"></i></span>
+                <span class="sa-action-card__body">
+                    <strong>Add Owner</strong>
+                    <small>Invite a restaurant owner.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="sa-action-card" href="{% url 'dineva:staff-add' %}">
+                <span class="sa-action-card__icon"><i class="bi bi-people" aria-hidden="true"></i></span>
+                <span class="sa-action-card__body">
+                    <strong>Add Staff</strong>
+                    <small>Create waiter or kitchen access.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="sa-action-card" href="{% url 'dineva:tax-profile-list' %}">
+                <span class="sa-action-card__icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+                <span class="sa-action-card__body">
+                    <strong>GST Reviews</strong>
+                    <small>{{ pending_tax_profile_count }} profile{{ pending_tax_profile_count|pluralize }} pending review.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+        </div>
+    </section>
+
+    <section class="sa-management" aria-labelledby="sa-management-title">
+        <div class="sa-management__header">
+            <div class="sa-section-heading">
+                <p class="sa-eyebrow">Platform Management</p>
+                <h2 id="sa-management-title">Manage restaurants, owners, waiters, and kitchen staff.</h2>
+            </div>
+        </div>
+
+        <div class="sa-tabs-wrap">
+            <ul class="nav nav-tabs sa-management-tabs" id="saManagementTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="restaurants-tab" data-bs-toggle="tab" data-bs-target="#restaurants-pane" type="button" role="tab" aria-controls="restaurants-pane" aria-selected="true">
+                        <i class="bi bi-shop" aria-hidden="true"></i>
+                        Restaurants
+                        <span class="sa-tab-count">{{ restaurant_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="owners-tab" data-bs-toggle="tab" data-bs-target="#owners-pane" type="button" role="tab" aria-controls="owners-pane" aria-selected="false">
+                        <i class="bi bi-person-badge" aria-hidden="true"></i>
+                        Owners
+                        <span class="sa-tab-count">{{ owner_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="waiters-tab" data-bs-toggle="tab" data-bs-target="#waiters-pane" type="button" role="tab" aria-controls="waiters-pane" aria-selected="false">
+                        <i class="bi bi-person-walking" aria-hidden="true"></i>
+                        Waiters
+                        <span class="sa-tab-count">{{ waiter_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="kitchen-tab" data-bs-toggle="tab" data-bs-target="#kitchen-pane" type="button" role="tab" aria-controls="kitchen-pane" aria-selected="false">
+                        <i class="bi bi-person-workspace" aria-hidden="true"></i>
+                        Kitchen Staff
+                        <span class="sa-tab-count">{{ kitchen_count }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="tab-content sa-tab-content" id="saManagementTabContent">
+            <section class="tab-pane fade show active" id="restaurants-pane" role="tabpanel" aria-labelledby="restaurants-tab" tabindex="0">
+                <div class="sa-table-toolbar">
+                    <div>
+                        <h3>Restaurants</h3>
+                        <p>{{ restaurant_count }} restaurant{{ restaurant_count|pluralize }} registered on Dineva.</p>
+                    </div>
+                    <a class="btn sa-btn-primary" href="{% url 'dineva:restaurant-add' %}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        Add Restaurant
+                    </a>
+                </div>
+                <div class="sa-filter-row" aria-label="Restaurant filters">
+                    <label class="sa-search-control" for="sa-restaurant-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input id="sa-restaurant-search" type="search" placeholder="Search restaurants..." disabled>
+                    </label>
+                </div>
+
+                {% if restaurants %}
+                    <div class="sa-table-scroll" data-sa-table-scroll>
+                        <table class="table table-hover align-middle sa-data-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Icon</th>
+                                    <th scope="col">Restaurant</th>
+                                    <th scope="col">Contact</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Owners</th>
+                                    <th scope="col">Waiters</th>
+                                    <th scope="col">Kitchen Staff</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for restaurant in restaurants %}
+                                <tr>
+                                    <td>
+                                        <span class="sa-row-icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                                    </td>
+                                    <td>
+                                        <div class="sa-primary-cell">
+                                            <strong>{{ restaurant.name }}</strong>
+                                            <small>{{ restaurant.address }}</small>
+                                        </div>
+                                    </td>
+                                    <td>{{ restaurant.contact }}</td>
+                                    <td><a href="mailto:{{ restaurant.email }}">{{ restaurant.email }}</a></td>
+                                    <td>{{ restaurant.owner_count }}</td>
+                                    <td>{{ restaurant.waiter_count }}</td>
+                                    <td>{{ restaurant.kitchen_staff_count }}</td>
+                                    <td>
+                                        {% if restaurant.is_active %}
+                                            <span class="sa-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                        {% else %}
+                                            <span class="sa-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="sa-table-actions">
+                                            <a href="{% url 'dineva:restaurant-edit' restaurant.id %}">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                                Edit
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="sa-empty-state">
+                        <span class="sa-empty-state__icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                        <h3>No restaurants yet</h3>
+                        <p>Create your first restaurant to begin managing the platform.</p>
+                        <a class="btn sa-btn-primary" href="{% url 'dineva:restaurant-add' %}">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            Add Restaurant
+                        </a>
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="tab-pane fade" id="owners-pane" role="tabpanel" aria-labelledby="owners-tab" tabindex="0">
+                <div class="sa-table-toolbar">
+                    <div>
+                        <h3>Owners</h3>
+                        <p>{{ owner_count }} owner{{ owner_count|pluralize }} linked to restaurants.</p>
+                    </div>
+                    <a class="btn sa-btn-primary" href="{% url 'dineva:owner-add' %}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        Add Owner
+                    </a>
+                </div>
+                <div class="sa-filter-row" aria-label="Owner filters">
+                    <label class="sa-search-control" for="sa-owner-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input id="sa-owner-search" type="search" placeholder="Search owners..." disabled>
+                    </label>
+                </div>
+
+                {% if owners %}
+                    <div class="sa-table-scroll" data-sa-table-scroll>
+                        <table class="table table-hover align-middle sa-data-table sa-data-table--people">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Photo</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Username</th>
+                                    <th scope="col">Public ID</th>
+                                    <th scope="col">Restaurant</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Contact</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for profile in owners %}
+                                <tr>
+                                    <td>
+                                        {% if profile.photo %}
+                                            <img class="sa-avatar sa-avatar--sm" src="{% url 'dineva:employee-photo' profile.user_id %}" alt="{{ profile.user.name }} profile photo">
+                                        {% else %}
+                                            <span class="sa-avatar sa-avatar--sm" aria-hidden="true">{{ profile.user.name|default:profile.user.username|slice:":1"|upper }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ profile.user.name }}</strong></td>
+                                    <td>@{{ profile.user.username }}</td>
+                                    <td>{{ profile.public_id|default:"Not assigned" }}</td>
+                                    <td>{{ profile.restaurant.name }}</td>
+                                    <td><a href="mailto:{{ profile.user.email }}">{{ profile.user.email }}</a></td>
+                                    <td>{{ profile.contact }}</td>
+                                    <td>
+                                        {% if profile.user.is_active %}
+                                            <span class="sa-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                        {% else %}
+                                            <span class="sa-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="sa-table-actions">
+                                            <a href="{% url 'dineva:employee-detail' profile.user_id %}">
+                                                <i class="bi bi-eye" aria-hidden="true"></i>
+                                                Details
+                                            </a>
+                                            <a href="{% url 'dineva:employee-edit' profile.user_id %}">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                                Edit
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="sa-empty-state">
+                        <span class="sa-empty-state__icon"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+                        <h3>No owners yet</h3>
+                        <p>Add an owner after creating a restaurant workspace.</p>
+                        <a class="btn sa-btn-primary" href="{% url 'dineva:owner-add' %}">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            Add Owner
+                        </a>
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="tab-pane fade" id="waiters-pane" role="tabpanel" aria-labelledby="waiters-tab" tabindex="0">
+                <div class="sa-table-toolbar">
+                    <div>
+                        <h3>Waiters</h3>
+                        <p>{{ waiter_count }} waiter{{ waiter_count|pluralize }} available across restaurants.</p>
+                    </div>
+                    <a class="btn sa-btn-primary" href="{% url 'dineva:staff-add' %}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        Add Staff
+                    </a>
+                </div>
+                <div class="sa-filter-row" aria-label="Waiter filters">
+                    <label class="sa-search-control" for="sa-waiter-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input id="sa-waiter-search" type="search" placeholder="Search waiters..." disabled>
+                    </label>
+                </div>
+
+                {% if waiters %}
+                    <div class="sa-table-scroll" data-sa-table-scroll>
+                        <table class="table table-hover align-middle sa-data-table sa-data-table--people">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Photo</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Username</th>
+                                    <th scope="col">Public ID</th>
+                                    <th scope="col">Restaurant</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Contact</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for profile in waiters %}
+                                <tr>
+                                    <td>
+                                        {% if profile.photo %}
+                                            <img class="sa-avatar sa-avatar--sm" src="{% url 'dineva:employee-photo' profile.user_id %}" alt="{{ profile.user.name }} profile photo">
+                                        {% else %}
+                                            <span class="sa-avatar sa-avatar--sm" aria-hidden="true">{{ profile.user.name|default:profile.user.username|slice:":1"|upper }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ profile.user.name }}</strong></td>
+                                    <td>@{{ profile.user.username }}</td>
+                                    <td>{{ profile.public_id|default:"Not assigned" }}</td>
+                                    <td>{{ profile.restaurant.name }}</td>
+                                    <td><a href="mailto:{{ profile.user.email }}">{{ profile.user.email }}</a></td>
+                                    <td>{{ profile.contact }}</td>
+                                    <td>
+                                        {% if profile.user.is_active %}
+                                            <span class="sa-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                        {% else %}
+                                            <span class="sa-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="sa-table-actions">
+                                            <a href="{% url 'dineva:employee-detail' profile.user_id %}">
+                                                <i class="bi bi-eye" aria-hidden="true"></i>
+                                                Details
+                                            </a>
+                                            <a href="{% url 'dineva:employee-edit' profile.user_id %}">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                                Edit
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="sa-empty-state">
+                        <span class="sa-empty-state__icon"><i class="bi bi-person-walking" aria-hidden="true"></i></span>
+                        <h3>No waiters yet</h3>
+                        <p>Add staff with the waiter role to populate this view.</p>
+                        <a class="btn sa-btn-primary" href="{% url 'dineva:staff-add' %}">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            Add Staff
+                        </a>
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="tab-pane fade" id="kitchen-pane" role="tabpanel" aria-labelledby="kitchen-tab" tabindex="0">
+                <div class="sa-table-toolbar">
+                    <div>
+                        <h3>Kitchen Staff</h3>
+                        <p>{{ kitchen_count }} kitchen staff member{{ kitchen_count|pluralize }} available across restaurants.</p>
+                    </div>
+                    <a class="btn sa-btn-primary" href="{% url 'dineva:staff-add' %}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        Add Staff
+                    </a>
+                </div>
+                <div class="sa-filter-row" aria-label="Kitchen staff filters">
+                    <label class="sa-search-control" for="sa-kitchen-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input id="sa-kitchen-search" type="search" placeholder="Search kitchen staff..." disabled>
+                    </label>
+                </div>
+
+                {% if kitchen_staff %}
+                    <div class="sa-table-scroll" data-sa-table-scroll>
+                        <table class="table table-hover align-middle sa-data-table sa-data-table--people">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Photo</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Username</th>
+                                    <th scope="col">Public ID</th>
+                                    <th scope="col">Restaurant</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Contact</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for profile in kitchen_staff %}
+                                <tr>
+                                    <td>
+                                        {% if profile.photo %}
+                                            <img class="sa-avatar sa-avatar--sm" src="{% url 'dineva:employee-photo' profile.user_id %}" alt="{{ profile.user.name }} profile photo">
+                                        {% else %}
+                                            <span class="sa-avatar sa-avatar--sm" aria-hidden="true">{{ profile.user.name|default:profile.user.username|slice:":1"|upper }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ profile.user.name }}</strong></td>
+                                    <td>@{{ profile.user.username }}</td>
+                                    <td>{{ profile.public_id|default:"Not assigned" }}</td>
+                                    <td>{{ profile.restaurant.name }}</td>
+                                    <td><a href="mailto:{{ profile.user.email }}">{{ profile.user.email }}</a></td>
+                                    <td>{{ profile.contact }}</td>
+                                    <td>
+                                        {% if profile.user.is_active %}
+                                            <span class="sa-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                        {% else %}
+                                            <span class="sa-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="sa-table-actions">
+                                            <a href="{% url 'dineva:employee-detail' profile.user_id %}">
+                                                <i class="bi bi-eye" aria-hidden="true"></i>
+                                                Details
+                                            </a>
+                                            <a href="{% url 'dineva:employee-edit' profile.user_id %}">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                                Edit
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="sa-empty-state">
+                        <span class="sa-empty-state__icon"><i class="bi bi-person-workspace" aria-hidden="true"></i></span>
+                        <h3>No kitchen staff yet</h3>
+                        <p>Add staff with the kitchen role to populate this view.</p>
+                        <a class="btn sa-btn-primary" href="{% url 'dineva:staff-add' %}">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            Add Staff
+                        </a>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/superadmin.js' %}?v=2" defer></script>
+{% endblock %}

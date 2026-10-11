@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Checkout | Dineva{% endblock %}
+{% block body_class %}workspace-page waiter-session-checkout-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="checkout-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Checkout</p>
+            <h1 id="checkout-title">Finalize bill for Table {{ session.table.table_no }}</h1>
+            <p>The bill is calculated on the server from served order items and the verified restaurant GST profile.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-session-detail' session.id %}">Back to Session</a>
+    </header>
+
+    <form class="om-form-card" method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger om-form-alert" role="alert">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <section class="om-form-section" aria-labelledby="customer-details-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="customer-details-title">Customer delivery details</h2>
+                    <p>Email is used for bill delivery when provided. WhatsApp remains unavailable until a provider is configured.</p>
+                </div>
+            </div>
+            <div class="om-form-grid">
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.customer_name.id_for_label }}">Customer name <span class="text-muted">(optional)</span></label>
+                    {{ form.customer_name }}
+                    {% for error in form.customer_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.customer_email.id_for_label }}">Email <span class="text-muted">(optional bill email)</span></label>
+                    {{ form.customer_email }}
+                    {% for error in form.customer_email.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.customer_mobile.id_for_label }}">Mobile / WhatsApp <span class="text-muted">(optional)</span></label>
+                    {{ form.customer_mobile }}
+                    {% for error in form.customer_mobile.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+        <div class="om-form-actions">
+            <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-session-detail' session.id %}">Cancel</a>
+            <button class="btn om-btn-primary" type="submit">
+                <i class="bi bi-receipt" aria-hidden="true"></i>
+                Finalize Bill
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

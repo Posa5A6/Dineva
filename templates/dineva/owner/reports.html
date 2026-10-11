@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reports | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-reports-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu" aria-labelledby="owner-reports-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Reports & Reconciliation</p>
+            <h1 id="owner-reports-title">{{ restaurant.name }} reports</h1>
+            <p>Review legacy order bills, consolidated session invoices, recorded payments, and outstanding balances without changing financial records.</p>
+        </div>
+    </header>
+
+    <section class="om-panel" aria-label="Report filters">
+        <form class="om-toolbar" method="get">
+            <label class="om-filter-control">
+                <span>Start</span>
+                <input class="form-control" type="date" name="start_date" value="{{ filters.start_date|date:'Y-m-d' }}">
+            </label>
+            <label class="om-filter-control">
+                <span>End</span>
+                <input class="form-control" type="date" name="end_date" value="{{ filters.end_date|date:'Y-m-d' }}">
+            </label>
+            <label class="om-filter-control">
+                <span>Type</span>
+                <select class="form-select" name="type" aria-label="Order type filter">
+                    <option value="all" {% if filters.order_type == "all" %}selected{% endif %}>All types</option>
+                    <option value="{{ dine_in_type }}" {% if filters.order_type == dine_in_type %}selected{% endif %}>Dine-in</option>
+                    <option value="{{ takeaway_type }}" {% if filters.order_type == takeaway_type %}selected{% endif %}>Takeaway</option>
+                </select>
+            </label>
+            <label class="om-filter-control">
+                <span>Status</span>
+                <select class="form-select" name="status" aria-label="Order status filter">
+                    <option value="all" {% if filters.status == "all" %}selected{% endif %}>All statuses</option>
+                    <option value="active" {% if filters.status == "active" %}selected{% endif %}>Active</option>
+                    <option value="completed" {% if filters.status == "completed" %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if filters.status == "cancelled" %}selected{% endif %}>Cancelled</option>
+                </select>
+            </label>
+            <button class="btn om-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Apply
+            </button>
+            <a class="btn om-btn-ghost" href="{% url 'dineva:owner-reports' %}">Reset</a>
+        </form>
+        {% if filters.errors %}
+            <div class="alert alert-warning m-3 mt-0" role="alert">
+                {% for error in filters.errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel p-3" aria-label="Report rules">
+        <p class="mb-2"><strong>Inclusion rules:</strong> sales totals combine legacy non-session orders and finalized session invoices. Table-session order rounds are not counted independently once a consolidated invoice exists.</p>
+        <p class="mb-0">Recorded payments combine successful legacy payments and successful session payments by paid date, falling back to recorded date when paid date is empty. Bills are not treated as collected revenue.</p>
+    </section>
+
+    <section aria-labelledby="report-summary-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Summary</p>
+            <h2 id="report-summary-title">Selected period</h2>
+        </div>
+        <div class="od-metric-grid">
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div>
+                    <span>Sales Bills</span>
+                    <strong>{{ sales_summary.bill_count }}</strong>
+                    <small>Rs. {{ sales_summary.order_total }}</small>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <div>
+                    <span>Recorded Payments</span>
+                    <strong>{{ payment_summary.payment_count }}</strong>
+                    <small>Rs. {{ payment_summary.payment_total }}</small>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+                <div>
+                    <span>Outstanding Orders</span>
+                    <strong>{{ outstanding_summary.order_count }}</strong>
+                    <small>Rs. {{ outstanding_summary.balance_total }}</small>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-x-circle" aria-hidden="true"></i></span>
+                <div>
+                    <span>Cancelled Orders</span>
+                    <strong>{{ cancelled_summary.order_count }}</strong>
+                    <small>Rs. {{ cancelled_summary.order_total }}</small>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-percent" aria-hidden="true"></i></span>
+                <div>
+                    <span>GST on Session Invoices</span>
+                    <strong>Rs. {{ sales_summary.gst_total }}</strong>
+                    <small>Taxable: Rs. {{ sales_summary.taxable_total }}</small>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    {% if not has_report_data %}
+        <section class="om-panel">
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span>
+                <h2>No report data found</h2>
+                <p>No matching orders or recorded payments exist for the selected range.</p>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="om-panel" aria-labelledby="payment-method-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-credit-card" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="payment-method-title">Recorded payments by method</h2>
+                <p>Only successful payments are included.</p>
+            </div>
+        </div>
+        {% if payment_method_summary %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Method</th>
+                            <th scope="col">Payments</th>
+                            <th scope="col">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in payment_method_summary %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.payment_count }}</td>
+                            <td>Rs. {{ row.payment_total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-credit-card" aria-hidden="true"></i></span>
+                <h2>No successful payments</h2>
+                <p>Recorded successful payments for this period will appear here.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="outstanding-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="outstanding-title">Outstanding balances</h2>
+                <p>Balances are derived from legacy order totals or finalized session invoices minus successful payments.</p>
+            </div>
+        </div>
+        {% if outstanding_rows %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Bill</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Table</th>
+                            <th scope="col">Bill Total</th>
+                            <th scope="col">Paid</th>
+                            <th scope="col">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in outstanding_rows %}
+                        <tr>
+                            <td><a href="{{ row.detail_url }}">{{ row.label }}</a></td>
+                            <td>{{ row.date|date:"M d, Y" }}</td>
+                            <td>{{ row.type }}</td>
+                            <td>{{ row.table }}</td>
+                            <td>Rs. {{ row.total_amount }}</td>
+                            <td>Rs. {{ row.paid_total }}</td>
+                            <td>Rs. {{ row.balance_due }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+                <h2>No outstanding balances</h2>
+                <p>No unpaid non-cancelled orders match the current filters.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="status-summary-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-list-check" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="status-summary-title">Order status summary</h2>
+                <p>Legacy standalone order counts and totals grouped by actual order status.</p>
+            </div>
+        </div>
+        {% if status_summary %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Status</th>
+                            <th scope="col">Orders</th>
+                            <th scope="col">Order Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in status_summary %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.order_count }}</td>
+                            <td>Rs. {{ row.order_total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-list-check" aria-hidden="true"></i></span>
+                <h2>No matching orders</h2>
+                <p>Status summaries will appear when orders match the selected filters.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="invoice-status-summary-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="invoice-status-summary-title">Session invoice status summary</h2>
+                <p>Consolidated session invoices are counted once per table visit.</p>
+            </div>
+        </div>
+        {% if invoice_status_summary %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Status</th>
+                            <th scope="col">Invoices</th>
+                            <th scope="col">Invoice Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in invoice_status_summary %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.invoice_count }}</td>
+                            <td>Rs. {{ row.invoice_total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+                <h2>No session invoices</h2>
+                <p>Finalized waiter session invoices will appear here.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="type-summary-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="type-summary-title">Dine-in versus takeaway</h2>
+                <p>Totals combine legacy standalone orders with finalized session invoices as dine-in bills.</p>
+            </div>
+        </div>
+        {% if type_summary %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Type</th>
+                            <th scope="col">Orders</th>
+                            <th scope="col">Order Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in type_summary %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.order_count }}</td>
+                            <td>Rs. {{ row.order_total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+                <h2>No order types found</h2>
+                <p>Order type summaries will appear when orders match the selected filters.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="daily-summary-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-calendar-week" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="daily-summary-title">Daily breakdown</h2>
+                <p>Daily order totals exclude cancelled orders; daily payments include successful payments.</p>
+            </div>
+        </div>
+        <div class="om-table-scroll">
+            <table class="table table-hover align-middle om-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Sales Bills</th>
+                        <th scope="col">Bill Total</th>
+                        <th scope="col">Payments</th>
+                        <th scope="col">Payment Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in daily_breakdown %}
+                    <tr>
+                        <td>{{ row.day|date:"M d, Y" }}</td>
+                        <td>{{ row.order_count }}</td>
+                        <td>Rs. {{ row.order_total }}</td>
+                        <td>{{ row.payment_count }}</td>
+                        <td>Rs. {{ row.payment_total }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

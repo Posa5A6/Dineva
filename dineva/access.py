@@ -37,6 +37,42 @@ def is_owner(user):
     )
 
 
+def is_waiter(user):
+    profile = get_profile(user)
+    return bool(
+        user.is_authenticated
+        and user.is_active
+        and not user.is_superuser
+        and profile
+        and profile.role == UserProfile.Role.WAITER
+        and profile.restaurant_id is not None
+        and profile.restaurant.is_active
+        and UserProfile.objects.filter(
+            restaurant_id=profile.restaurant_id,
+            role=UserProfile.Role.OWNER,
+            user__is_active=True,
+        ).exists()
+    )
+
+
+def is_kitchen_staff(user):
+    profile = get_profile(user)
+    return bool(
+        user.is_authenticated
+        and user.is_active
+        and not user.is_superuser
+        and profile
+        and profile.role == UserProfile.Role.KITCHEN_STAFF
+        and profile.restaurant_id is not None
+        and profile.restaurant.is_active
+        and UserProfile.objects.filter(
+            restaurant_id=profile.restaurant_id,
+            role=UserProfile.Role.OWNER,
+            user__is_active=True,
+        ).exists()
+    )
+
+
 def account_can_authenticate(user):
     if not user or not user.is_active:
         return False

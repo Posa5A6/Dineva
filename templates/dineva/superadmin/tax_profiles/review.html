@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Review GST Profile | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-tax-profile-review-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=2" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-form-shell" aria-labelledby="tax-profile-review-title">
+    <header class="sa-form-header">
+        <div>
+            <p class="sa-eyebrow">GST Review</p>
+            <h1 id="tax-profile-review-title">{{ tax_profile.restaurant.name }}</h1>
+            <p>Approve only after independent review of registration and restaurant-service classification.</p>
+        </div>
+        <a class="btn sa-btn-secondary" href="{% url 'dineva:tax-profile-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Reviews
+        </a>
+    </header>
+
+    <section class="sa-form-card" aria-label="Submitted tax profile">
+        <dl class="od-restaurant-details">
+            <div><dt>Status</dt><dd>{{ tax_profile.get_configuration_status_display }}</dd></div>
+            <div><dt>Registration</dt><dd>{{ tax_profile.get_registration_status_display }}</dd></div>
+            <div><dt>GST Treatment</dt><dd>{{ tax_profile.get_gst_treatment_display }}</dd></div>
+            <div><dt>GSTIN</dt><dd>{{ tax_profile.gstin|default:"-" }}</dd></div>
+            <div><dt>Legal Name</dt><dd>{{ tax_profile.legal_name|default:"-" }}</dd></div>
+            <div><dt>Trade Name</dt><dd>{{ tax_profile.trade_name|default:"-" }}</dd></div>
+            <div><dt>State</dt><dd>{{ tax_profile.state_name|default:"-" }} {% if tax_profile.state_code %}({{ tax_profile.state_code }}){% endif %}</dd></div>
+            <div><dt>Price Basis</dt><dd>{% if tax_profile.prices_include_gst %}GST-inclusive menu prices{% else %}GST-exclusive menu prices{% endif %}</dd></div>
+            <div><dt>Effective From</dt><dd>{{ tax_profile.effective_from|date:"M d, Y"|default:"-" }}</dd></div>
+            <div><dt>Submitted</dt><dd>{{ tax_profile.submitted_at|date:"M d, Y H:i"|default:"-" }}</dd></div>
+        </dl>
+        <div class="mt-3">
+            <h2 class="h6">Business address</h2>
+            <p>{{ tax_profile.business_address|linebreaksbr|default:"-" }}</p>
+        </div>
+        {% if tax_profile.review_notes %}
+            <div class="alert alert-secondary mt-3" role="note">
+                <strong>Previous review notes:</strong>
+                <div>{{ tax_profile.review_notes|linebreaksbr }}</div>
+            </div>
+        {% endif %}
+    </section>
+
+    <form class="sa-form-card" method="post" novalidate>
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endfor %}
+        {{ form.decision }}
+        <section class="sa-form-section" aria-labelledby="review-decision-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="review-decision-title">Review decision</h2>
+                    <p>Approval enables server-side GST calculation for waiter checkout. Rejection sends the Owner back to correct their submitted profile.</p>
+                </div>
+            </div>
+            {% if form.decision.errors %}
+                {% for error in form.decision.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            {% endif %}
+            {% if can_review %}
+                <div class="alert alert-warning" role="alert">
+                    Approve only after independent verification of the restaurant's GST registration and classification. A syntactically valid GSTIN is not proof of eligibility.
+                </div>
+            {% else %}
+                <div class="alert alert-secondary" role="note">
+                    This profile is {{ tax_profile.get_configuration_status_display }} and is no longer pending review.
+                </div>
+            {% endif %}
+            <div class="sa-form-grid">
+                <div class="sa-field sa-field--full">
+                    <label class="form-label" for="{{ form.review_notes.id_for_label }}">Review notes / rejection reason</label>
+                    {{ form.review_notes }}
+                    <div class="form-help">Required for rejection. Optional internal context for approval.</div>
+                    {% for error in form.review_notes.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+        <div class="sa-form-actions">
+            <a class="btn sa-btn-secondary" href="{% url 'dineva:tax-profile-list' %}">Cancel</a>
+            {% if can_review %}
+                <button class="btn btn-danger" type="submit" name="decision" value="reject">
+                    <i class="bi bi-x-circle" aria-hidden="true"></i>
+                    Reject GST Profile
+                </button>
+                <button class="btn btn-success" type="submit" name="decision" value="approve">
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                    Approve GST Profile
+                </button>
+            {% endif %}
+        </div>
+    </form>
+
+    <section class="sa-form-card" aria-label="Review history">
+        <h2 class="h5">Review history</h2>
+        {% if reviews %}
+            <div class="sa-table-scroll">
+                <table class="table table-hover align-middle sa-data-table">
+                    <thead>
+                        <tr><th>Time</th><th>Reviewer</th><th>Decision</th><th>Status</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for review in reviews %}
+                        <tr>
+                            <td>{{ review.created_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ review.reviewer.name|default:review.reviewer.username }}</td>
+                            <td>{{ review.get_decision_display }}</td>
+                            <td>{{ review.previous_status }} -> {{ review.resulting_status }}</td>
+                            <td>{{ review.notes|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">No prior review events recorded.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

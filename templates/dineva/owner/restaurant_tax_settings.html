@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}GST Settings | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-restaurant-tax-settings-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="owner-tax-settings-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Restaurant GST Profile</p>
+            <h1 id="owner-tax-settings-title">{{ restaurant.name }} GST settings</h1>
+            <p>Submit tax-profile details for Dineva review. GST calculation and invoice generation are not active in this phase.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:owner-restaurant-settings' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Restaurant Settings
+        </a>
+    </header>
+
+    <section class="om-panel p-3" aria-label="GST profile status">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <p class="od-eyebrow mb-1">Review Status</p>
+                <h2 class="h5 mb-1">{{ tax_profile.get_configuration_status_display }}</h2>
+                <p class="text-muted mb-0">
+                    {% if tax_profile.configuration_status == "VERIFIED" %}
+                        Dineva has reviewed this profile. Waiter checkout can use the verified tax configuration for server-side bill calculation.
+                    {% elif tax_profile.configuration_status == "REJECTED" %}
+                        Dineva rejected this profile. Review the reason below, update the details, and submit again.
+                    {% elif tax_profile.configuration_status == "PENDING_REVIEW" %}
+                        This profile is waiting for Dineva Super Admin review.
+                    {% else %}
+                        Submit this form to request Dineva review.
+                    {% endif %}
+                </p>
+            </div>
+            <span class="od-health-pill {% if tax_profile.configuration_status == 'VERIFIED' %}is-ready{% else %}is-paused{% endif %}">
+                <span aria-hidden="true"></span>
+                {{ tax_profile.get_configuration_status_display }}
+            </span>
+        </div>
+        {% if tax_profile.configuration_status == "REJECTED" and tax_profile.review_notes %}
+            <div class="alert alert-warning mt-3 mb-0" role="alert">
+                <strong>Rejection reason:</strong>
+                <div>{{ tax_profile.review_notes|linebreaksbr }}</div>
+            </div>
+        {% elif tax_profile.configuration_status == "VERIFIED" and tax_profile.reviewed_at %}
+            <p class="form-help mt-3 mb-0">Reviewed: {{ tax_profile.reviewed_at|date:"M d, Y H:i" }}</p>
+        {% endif %}
+        {% if tax_profile.submitted_at %}
+            <p class="form-help mt-3 mb-0">Last submitted: {{ tax_profile.submitted_at|date:"M d, Y H:i" }}</p>
+        {% elif not has_saved_tax_profile %}
+            <p class="form-help mt-3 mb-0">No GST profile has been submitted for this restaurant yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="om-panel p-3" aria-label="GST configuration guidance">
+        <p class="mb-2"><strong>Important:</strong> Choose the registration status and GST treatment that match the restaurant's actual legal position.</p>
+        <p class="mb-2">A regular GST profile can be submitted for review, but exceptional treatment such as specified-premises restaurant service requires Dineva/Super Admin review before it can be treated as verified.</p>
+        <p class="mb-0">Composition and unregistered suppliers must not be configured as regular GST-collecting suppliers.</p>
+    </section>
+
+    <form class="om-form-card" method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger om-form-alert" role="alert">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="alert alert-warning om-form-alert" role="alert">
+                Please review the highlighted fields and try again.
+            </div>
+        {% endif %}
+
+        <section class="om-form-section" aria-labelledby="tax-registration-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-building-check" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="tax-registration-title">Registration and treatment</h2>
+                    <p>These controlled choices will later drive server-side tax rules after review.</p>
+                </div>
+            </div>
+
+            <div class="om-form-grid">
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.registration_status.id_for_label }}">Registration status</label>
+                    {{ form.registration_status }}
+                    {% for error in form.registration_status.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.gst_treatment.id_for_label }}">GST treatment</label>
+                    {{ form.gst_treatment }}
+                    {% for error in form.gst_treatment.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.effective_from.id_for_label }}">Effective from</label>
+                    {{ form.effective_from }}
+                    <div class="form-help">Optional until Dineva review confirms the applicable profile.</div>
+                    {% for error in form.effective_from.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <div class="form-check mt-4">
+                        {{ form.prices_include_gst }}
+                        <label class="form-check-label" for="{{ form.prices_include_gst.id_for_label }}">
+                            Menu prices include GST where GST applies
+                        </label>
+                    </div>
+                    {% for error in form.prices_include_gst.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="om-form-section" aria-labelledby="tax-identity-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="tax-identity-title">Business identity</h2>
+                    <p>Registered restaurants need GSTIN and business details. Unregistered restaurants can leave GSTIN blank.</p>
+                </div>
+            </div>
+
+            <div class="om-form-grid">
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.gstin.id_for_label }}">GSTIN</label>
+                    {{ form.gstin }}
+                    {% for error in form.gstin.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.legal_name.id_for_label }}">Legal business name</label>
+                    {{ form.legal_name }}
+                    {% for error in form.legal_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.trade_name.id_for_label }}">Trade name</label>
+                    {{ form.trade_name }}
+                    {% for error in form.trade_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.state_name.id_for_label }}">State</label>
+                    {{ form.state_name }}
+                    {% for error in form.state_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.state_code.id_for_label }}">GST state code</label>
+                    {{ form.state_code }}
+                    <div class="form-help">Karnataka is 29.</div>
+                    {% for error in form.state_code.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field om-field--full">
+                    <label class="form-label" for="{{ form.business_address.id_for_label }}">Registered business address</label>
+                    {{ form.business_address }}
+                    {% for error in form.business_address.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="om-form-section" aria-labelledby="tax-review-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-shield-lock" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="tax-review-title">Review control</h2>
+                    <p>Owners can submit details for review. Verified status, reviewer notes, and activation are controlled separately by Dineva administration.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="om-form-actions">
+            <a class="btn om-btn-secondary" href="{% url 'dineva:owner-dashboard' %}">Cancel</a>
+            <button class="btn om-btn-primary" type="submit">
+                <i class="bi bi-send-check" aria-hidden="true"></i>
+                Submit for Review
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

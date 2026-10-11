@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Session Payment | Dineva{% endblock %}
+{% block body_class %}workspace-page waiter-session-payment-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="session-payment-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Session Payment</p>
+            <h1 id="session-payment-title">Invoice {{ invoice.invoice_number }}</h1>
+            <p>Record the exact server-calculated balance before closing and releasing the table. Online/UPI is recorded only as manual staff confirmation.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-session-detail' session.id %}">Back to Session</a>
+    </header>
+
+    <section class="om-form-card" aria-label="Bill summary">
+        <dl class="od-restaurant-details">
+            <div><dt>Document</dt><dd>{{ invoice.get_document_type_display }}</dd></div>
+            <div><dt>Taxable value</dt><dd>Rs. {{ invoice.taxable_value }}</dd></div>
+            <div><dt>CGST</dt><dd>Rs. {{ invoice.cgst_amount }}</dd></div>
+            <div><dt>SGST</dt><dd>Rs. {{ invoice.sgst_amount }}</dd></div>
+            <div><dt>IGST</dt><dd>Rs. {{ invoice.igst_amount }}</dd></div>
+            <div><dt>Total GST</dt><dd>Rs. {{ invoice.total_gst }}</dd></div>
+            <div><dt>Final payable</dt><dd>Rs. {{ invoice.grand_total }}</dd></div>
+            <div><dt>Paid</dt><dd>Rs. {{ bill_state.paid_total }}</dd></div>
+            <div><dt>Balance</dt><dd>Rs. {{ bill_state.balance_due }}</dd></div>
+        </dl>
+    </section>
+
+    {% if not bill_state.is_paid %}
+        <form class="om-form-card" method="post" novalidate>
+            {% csrf_token %}
+            {{ form.submission_key }}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger om-form-alert" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <section class="om-form-section" aria-labelledby="payment-form-title">
+                <div class="om-form-section__header">
+                    <span class="om-form-section__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="payment-form-title">Confirm payment</h2>
+                        <p>Cash can be recorded directly. Online/UPI requires staff to independently confirm receipt and enter the transaction/reference number. No payment gateway verification is performed.</p>
+                    </div>
+                </div>
+                <div class="om-form-grid">
+                    <div class="om-field">
+                        <label class="form-label" for="{{ form.payment_method.id_for_label }}">Method</label>
+                        {{ form.payment_method }}
+                        {% for error in form.payment_method.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="om-field">
+                        <label class="form-label" for="{{ form.amount.id_for_label }}">Amount</label>
+                        {{ form.amount }}
+                        {% for error in form.amount.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="om-field om-field--full">
+                        <label class="form-label" for="{{ form.reference.id_for_label }}">Reference</label>
+                        {{ form.reference }}
+                        <div class="form-help">Required for manual Online/UPI confirmation. Optional note for cash.</div>
+                        {% for error in form.reference.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </section>
+            <div class="om-form-actions">
+                <button class="btn om-btn-primary" type="submit">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    Record Payment
+                </button>
+            </div>
+        </form>
+    {% else %}
+        <section class="om-panel p-3">
+            <p class="mb-3">This finalized bill is fully paid. Closing releases the table only after Dineva confirms all session items are served or cancelled.</p>
+            <form method="post" action="{% url 'dineva:waiter-session-close' session.id %}">
+                {% csrf_token %}
+                <button class="btn om-btn-primary" type="submit">
+                    <i class="bi bi-door-open" aria-hidden="true"></i>
+                    Close Session and Release Table
+                </button>
+            </form>
+        </section>
+    {% endif %}
+
+    <section class="om-panel p-3 mt-3" aria-labelledby="bill-delivery-title">
+        <div class="om-form-section__header p-0 mb-3">
+            <span class="om-form-section__icon"><i class="bi bi-envelope-check" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="bill-delivery-title">Bill email delivery</h2>
+                <p>Email delivery is attempted after payment is recorded. WhatsApp delivery is not configured in this phase.</p>
+            </div>
+        </div>
+        {% if delivery_attempts %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Attempted</th>
+                            <th scope="col">Destination</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for attempt in delivery_attempts %}
+                        <tr>
+                            <td>{{ attempt.attempted_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ attempt.destination|default:"-" }}</td>
+                            <td>{{ attempt.get_status_display }}</td>
+                            <td>{{ attempt.error_message|default:"Accepted by email backend." }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">No bill email attempt has been recorded yet.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

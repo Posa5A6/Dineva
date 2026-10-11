@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Owner Dashboard | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-dashboard-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=1" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="od-dashboard" aria-labelledby="owner-dashboard-title">
+    <section class="od-hero" aria-labelledby="owner-dashboard-title">
+        <div class="od-hero__identity">
+            {% if owner_profile.photo %}
+                <img class="od-avatar od-avatar--lg" src="{% url 'dineva:employee-photo' request.user.id %}" alt="{{ request.user.name }} profile photo">
+            {% else %}
+                <span class="od-avatar od-avatar--lg" aria-hidden="true">
+                    {{ request.user.name|default:request.user.username|slice:":1"|upper }}
+                </span>
+            {% endif %}
+            <div>
+                <p class="od-eyebrow">Owner Workspace</p>
+                <h1 id="owner-dashboard-title">Welcome, {{ request.user.name|default:request.user.username }}</h1>
+                <p>{{ restaurant.name }} operations overview</p>
+            </div>
+        </div>
+        <span class="od-status-pill">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            Owner access
+        </span>
+    </section>
+
+    <section class="od-restaurant-card" aria-labelledby="restaurant-context-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Restaurant Context</p>
+            <h2 id="restaurant-context-title">{{ restaurant.name }}</h2>
+        </div>
+        <dl class="od-restaurant-details">
+            <div>
+                <dt>Address</dt>
+                <dd>{{ restaurant.address }}</dd>
+            </div>
+            <div>
+                <dt>Contact</dt>
+                <dd>{{ restaurant.contact }}</dd>
+            </div>
+            <div>
+                <dt>Email</dt>
+                <dd><a href="mailto:{{ restaurant.email }}">{{ restaurant.email }}</a></dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd>
+                    <span class="od-health-pill is-ready">
+                        <span aria-hidden="true"></span>
+                        Active
+                    </span>
+                </dd>
+            </div>
+        </dl>
+    </section>
+
+    <section aria-labelledby="operations-summary-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Operational Summary</p>
+            <h2 id="operations-summary-title">Current setup snapshot</h2>
+        </div>
+        <div class="od-metric-grid">
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-person-walking" aria-hidden="true"></i></span>
+                <div>
+                    <span>Active Waiters</span>
+                    <strong>{{ active_waiter_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-person-workspace" aria-hidden="true"></i></span>
+                <div>
+                    <span>Active Kitchen Staff</span>
+                    <strong>{{ active_kitchen_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <div>
+                    <span>Active Menu Items</span>
+                    <strong>{{ menu_item_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i></span>
+                <div>
+                    <span>Tables</span>
+                    <strong>{{ table_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+                <div>
+                    <span>Today's Session Bills</span>
+                    <strong>{{ today_invoice_count }}</strong>
+                    <small>Rs. {{ today_invoice_total }}</small>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <div>
+                    <span>Today's Payments</span>
+                    <strong>{{ today_payment_count }}</strong>
+                    <small>Rs. {{ today_payment_total }}</small>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section aria-labelledby="quick-actions-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Quick Actions</p>
+            <h2 id="quick-actions-title">Manage what is available today</h2>
+        </div>
+        <div class="od-action-grid">
+            <a class="od-action-card od-action-card--primary" href="{% url 'dineva:owner-staff-list' %}">
+                <span class="od-action-card__icon"><i class="bi bi-people" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Manage Staff</strong>
+                    <small>Add waiters and kitchen staff for {{ restaurant.name }}.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="od-action-card" href="{% url 'dineva:owner-menu-list' %}">
+                <span class="od-action-card__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Menu Management</strong>
+                    <small>Create, update, and mark items unavailable.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="od-action-card" href="{% url 'dineva:owner-table-list' %}">
+                <span class="od-action-card__icon"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Table Management</strong>
+                    <small>Add and manage dine-in tables.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="od-action-card" href="{% url 'dineva:owner-order-list' %}">
+                <span class="od-action-card__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Orders Overview</strong>
+                    <small>Review waiter orders without changing kitchen status.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="od-action-card" href="{% url 'dineva:owner-reports' %}">
+                <span class="od-action-card__icon"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Reports</strong>
+                    <small>Review sales, payments, balances, and daily summaries.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="od-action-card" href="{% url 'dineva:owner-restaurant-settings' %}">
+                <span class="od-action-card__icon"><i class="bi bi-sliders" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Restaurant Settings</strong>
+                    <small>Update restaurant profile, contact details, and logo.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+        </div>
+    </section>
+
+    <section class="od-setup-card" aria-labelledby="setup-overview-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Setup Overview</p>
+            <h2 id="setup-overview-title">Next configuration steps</h2>
+        </div>
+        <div class="od-setup-list">
+            {% for step in setup_steps %}
+                <article class="od-setup-item {% if step.complete %}is-complete{% endif %}">
+                    <span class="od-setup-item__icon">
+                        {% if step.complete %}
+                            <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        {% else %}
+                            <i class="bi bi-clock" aria-hidden="true"></i>
+                        {% endif %}
+                    </span>
+                    <div>
+                        <h3>{{ step.label }}</h3>
+                        <p>{{ step.detail }}</p>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

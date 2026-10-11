@@ -4,7 +4,7 @@
         <button class="app-menu-toggle" type="button" aria-controls="appSidebar" aria-expanded="true" aria-label="Collapse navigation">
             <i class="bi bi-list" aria-hidden="true"></i>
         </button>
-        <a class="app-brand" href="{% url 'dineva:dashboard' %}" aria-label="Dineva dashboard">
+        <a class="app-brand" href="{% if request.user.profile.role == 'OWNER' %}{% url 'dineva:owner-dashboard' %}{% elif request.user.profile.role == 'SUPERADMIN' %}{% url 'dineva:dashboard' %}{% elif request.user.profile.role == 'WAITER' %}{% url 'dineva:waiter-dashboard' %}{% elif request.user.profile.role == 'KITCHEN_STAFF' %}{% url 'dineva:kitchen-order-queue' %}{% else %}{% url 'dineva:home' %}{% endif %}" aria-label="Dineva workspace">
             <img src="{% static 'dineva/images/dineva-mark-ivory.svg' %}" width="34" height="34" alt="">
             <span>Dineva</span>
         </a>

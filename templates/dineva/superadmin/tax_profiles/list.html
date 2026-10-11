@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}GST Reviews | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-tax-profiles-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=2" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-management" aria-labelledby="tax-profiles-title">
+    <div class="sa-table-toolbar">
+        <div>
+            <p class="sa-eyebrow">GST Configuration</p>
+            <h1 id="tax-profiles-title">Restaurant tax-profile reviews</h1>
+            <p>Review owner-submitted GST profile data before Dineva issues session bills.</p>
+        </div>
+        <a class="btn sa-btn-secondary" href="{% url 'dineva:dashboard' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Dashboard
+        </a>
+    </div>
+
+    <section class="sa-panel" aria-label="Tax profile filters">
+        <form class="sa-filter-row" method="get">
+            <label class="sa-search-control" for="tax-profile-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="tax-profile-search" name="q" type="search" value="{{ search_query }}" placeholder="Search restaurant, GSTIN, legal or trade name">
+            </label>
+            <label class="sa-filter-control">
+                <span>Status</span>
+                <select class="form-select" name="status" aria-label="Configuration status">
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
+                    {% for value,label in status_choices %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button class="btn sa-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Filter
+            </button>
+            {% if has_active_filters %}
+                <a class="btn sa-btn-ghost" href="{% url 'dineva:tax-profile-list' %}">Clear</a>
+            {% endif %}
+        </form>
+    </section>
+
+    <section class="sa-panel" aria-label="Tax profile list">
+        {% if tax_profiles %}
+            <div class="sa-table-scroll" data-sa-table-scroll>
+                <table class="table table-hover align-middle sa-data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Restaurant</th>
+                            <th scope="col">Registration</th>
+                            <th scope="col">GST Treatment</th>
+                            <th scope="col">GSTIN</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Submitted</th>
+                            <th scope="col">Reviewed</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for profile in tax_profiles %}
+                        <tr>
+                            <td>
+                                <div class="sa-primary-cell">
+                                    <strong>{{ profile.restaurant.name }}</strong>
+                                    <small>{{ profile.trade_name|default:profile.legal_name|default:"No trade name" }}</small>
+                                </div>
+                            </td>
+                            <td>{{ profile.get_registration_status_display }}</td>
+                            <td>{{ profile.get_gst_treatment_display }}</td>
+                            <td>{{ profile.gstin|default:"-" }}</td>
+                            <td>{{ profile.get_configuration_status_display }}</td>
+                            <td>{{ profile.submitted_at|date:"M d, Y H:i"|default:"-" }}</td>
+                            <td>{% if profile.reviewed_at %}{{ profile.reviewed_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</td>
+                            <td>
+                                <div class="sa-table-actions">
+                                    <a href="{% url 'dineva:tax-profile-review' profile.id %}">
+                                        <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+                                        Review
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="sa-empty-state">
+                <span class="sa-empty-state__icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+                <h2>No tax profiles found</h2>
+                <p>Owner-submitted GST profiles will appear here for platform review.</p>
+            </div>
+        {% endif %}
+
+        {% if page_obj.has_other_pages %}
+            <nav class="om-pagination" aria-label="Tax profile pagination">
+                <span class="om-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <div class="btn-group">
+                    {% if page_obj.has_previous %}
+                        <a class="btn sa-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn sa-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

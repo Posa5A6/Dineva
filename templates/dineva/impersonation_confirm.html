@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Confirm Impersonation | Dineva{% endblock %}
+{% block body_class %}workspace-page impersonation-confirm-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=9" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-impersonation" aria-labelledby="impersonation-title">
+    <header class="sa-page-heading">
+        <div>
+            <p class="sa-eyebrow">Secure Support Mode</p>
+            <h1 id="impersonation-title">Confirm Impersonation</h1>
+            <p>Review the target account and record a reason before starting impersonation.</p>
+        </div>
+        <a class="btn sa-btn-secondary" href="{% url 'dineva:employee-detail' target.user_id %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Employee
+        </a>
+    </header>
+
+    <form method="post" class="sa-form-card" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger sa-form-alert" role="alert">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="sa-form-section" aria-labelledby="impersonation-target-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-person-lock" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="impersonation-target-title">Target Account</h2>
+                    <p>Dineva will switch this browser session into the target user's actual permissions.</p>
+                </div>
+            </div>
+
+            <dl class="sa-impersonation-summary">
+                <div>
+                    <dt>Name</dt>
+                    <dd>{{ target.user.name }}</dd>
+                </div>
+                <div>
+                    <dt>Username</dt>
+                    <dd>@{{ target.user.username }}</dd>
+                </div>
+                <div>
+                    <dt>Role</dt>
+                    <dd>{{ target.get_role_display }}</dd>
+                </div>
+                <div>
+                    <dt>Restaurant</dt>
+                    <dd>{{ target.restaurant.name }}</dd>
+                </div>
+                <div>
+                    <dt>Public ID</dt>
+                    <dd>{{ target.public_id }}</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="impersonation-reason-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-journal-check" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="impersonation-reason-title">Audit Reason</h2>
+                    <p>The reason is stored in the impersonation audit trail.</p>
+                </div>
+            </div>
+
+            <div class="sa-field">
+                <label class="form-label" for="{{ form.reason.id_for_label }}">Reason <span aria-hidden="true">*</span></label>
+                {{ form.reason }}
+                {% for error in form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="impersonation-safety-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-shield-lock" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="impersonation-safety-title">Security Boundary</h2>
+                    <p>The target user's role, restaurant restrictions, and login eligibility remain enforced.</p>
+                </div>
+            </div>
+
+            <ul class="sa-account-note">
+                <li>No password is collected or disclosed.</li>
+                <li>No User or UserProfile fields are changed.</li>
+                <li>Super Admin-only pages remain unavailable during impersonation.</li>
+                <li>A persistent banner will show that impersonation is active.</li>
+            </ul>
+        </section>
+
+        <div class="sa-form-actions">
+            <button class="btn sa-btn-primary" type="submit">
+                <i class="bi bi-person-lock" aria-hidden="true"></i>
+                Start Impersonation
+            </button>
+            <a class="btn sa-btn-secondary" href="{% url 'dineva:employee-detail' target.user_id %}">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                Cancel
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Waiter Dashboard | Dineva{% endblock %}
+{% block body_class %}workspace-page waiter-dashboard-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="od-dashboard" aria-labelledby="waiter-dashboard-title">
+    <section class="od-hero" aria-labelledby="waiter-dashboard-title">
+        <div class="od-hero__identity">
+            {% if request.user.profile.photo %}
+                <img class="od-avatar od-avatar--lg" src="{% url 'dineva:employee-photo' request.user.id %}" alt="{{ request.user.name }} profile photo">
+            {% else %}
+                <span class="od-avatar od-avatar--lg" aria-hidden="true">
+                    {{ request.user.name|default:request.user.username|slice:":1"|upper }}
+                </span>
+            {% endif %}
+            <div>
+                <p class="od-eyebrow">Waiter Workspace</p>
+                <h1 id="waiter-dashboard-title">Welcome, {{ request.user.name|default:request.user.username }}</h1>
+                <p>{{ restaurant.name }} order service</p>
+            </div>
+        </div>
+        <a class="btn om-btn-primary" href="{% url 'dineva:waiter-order-add' %}">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            New Order
+        </a>
+    </section>
+
+    <section aria-labelledby="waiter-summary-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Service Snapshot</p>
+            <h2 id="waiter-summary-title">Current operations</h2>
+        </div>
+        <div class="od-metric-grid">
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div>
+                    <span>Active Orders</span>
+                    <strong>{{ active_order_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-calendar-check" aria-hidden="true"></i></span>
+                <div>
+                    <span>Today's Orders</span>
+                    <strong>{{ today_order_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i></span>
+                <div>
+                    <span>Available Tables</span>
+                    <strong>{{ available_table_count }}</strong>
+                </div>
+            </article>
+            <article class="od-metric-card">
+                <span class="od-metric-card__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <div>
+                    <span>Available Items</span>
+                    <strong>{{ available_item_count }}</strong>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section aria-labelledby="waiter-actions-title">
+        <div class="od-section-heading">
+            <p class="od-eyebrow">Quick Actions</p>
+            <h2 id="waiter-actions-title">Move through service</h2>
+        </div>
+        <div class="od-action-grid">
+            <a class="od-action-card od-action-card--primary" href="{% url 'dineva:waiter-order-add' %}">
+                <span class="od-action-card__icon"><i class="bi bi-plus-lg" aria-hidden="true"></i></span>
+                <span>
+                    <strong>Create Order</strong>
+                    <small>Add dine-in or takeaway orders from available menu items.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a class="od-action-card" href="{% url 'dineva:waiter-order-list' %}">
+                <span class="od-action-card__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <span>
+                    <strong>View Orders</strong>
+                    <small>Track order and kitchen preparation status.</small>
+                </span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="waiter-recent-title" data-waiter-status-poll data-status-url="{% url 'dineva:waiter-order-statuses' %}">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="waiter-recent-title">Recent orders</h2>
+                <p>Kitchen preparation status refreshes while this page is visible.</p>
+            </div>
+        </div>
+        {% if recent_orders %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Table</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Order Status</th>
+                            <th scope="col">Kitchen</th>
+                            <th scope="col"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in recent_orders %}
+                        <tr data-order-status-row data-order-id="{{ order.id }}">
+                            <td><strong>#{{ order.id }}</strong><br><small>{{ order.created_at|date:"M d, Y H:i" }}</small></td>
+                            <td>{{ order.get_order_type_display }}</td>
+                            <td>
+                                {% if order.table %}
+                                    {{ order.table.table_no }}
+                                    {% if order.table_session_id %}
+                                        <br><a class="small" href="{% url 'dineva:waiter-session-detail' order.table_session_id %}">Session #{{ order.table_session_id }}</a>
+                                    {% endif %}
+                                {% else %}
+                                    Takeaway
+                                {% endif %}
+                            </td>
+                            <td>Rs. {{ order.total_amount }}</td>
+                            <td><span class="om-status-badge {% if order.status == 'ACTIVE' %}is-available{% else %}is-inactive{% endif %}" data-order-status><span aria-hidden="true"></span>{{ order.get_status_display }}</span></td>
+                            <td><span data-kitchen-status>{{ order.kitchen_summary.label }} ({{ order.kitchen_summary.served_count }}/{{ order.kitchen_summary.total_count }} served)</span></td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a class="btn om-btn-ghost" href="{% url 'dineva:waiter-order-detail' order.id %}">View</a>
+                                    {% if order.table_session_id %}
+                                        <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-session-detail' order.table_session_id %}">Session</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <h2>No recent orders</h2>
+                <p>Create an order when service begins.</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/waiter_orders.js' %}?v=1" defer></script>
+{% endblock %}

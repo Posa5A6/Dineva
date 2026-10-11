@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Orders Overview | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-orders-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu" aria-labelledby="owner-orders-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Orders Overview</p>
+            <h1 id="owner-orders-title">{{ restaurant.name }} orders</h1>
+            <p>Review restaurant orders without changing waiter or kitchen workflow state.</p>
+        </div>
+    </header>
+
+    <section class="om-panel" aria-label="Owner order overview">
+        <form class="om-toolbar" method="get">
+            <label class="om-search-control" for="owner-order-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="owner-order-search" name="q" type="search" value="{{ search_query }}" placeholder="Search order, table, waiter, or item">
+            </label>
+            <label class="om-filter-control">
+                <span>Status</span>
+                <select class="form-select" name="status" aria-label="Order status filter">
+                    <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+                    <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if status_filter == "cancelled" %}selected{% endif %}>Cancelled</option>
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
+                </select>
+            </label>
+            <label class="om-filter-control">
+                <span>Type</span>
+                <select class="form-select" name="type" aria-label="Order type filter">
+                    <option value="all" {% if type_filter == "all" %}selected{% endif %}>All types</option>
+                    <option value="DINE_IN" {% if type_filter == "DINE_IN" %}selected{% endif %}>Dine-in</option>
+                    <option value="TAKEAWAY" {% if type_filter == "TAKEAWAY" %}selected{% endif %}>Takeaway</option>
+                </select>
+            </label>
+            <button class="btn om-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Filter
+            </button>
+            {% if has_active_filters %}
+                <a class="btn om-btn-ghost" href="{% url 'dineva:owner-order-list' %}">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if orders %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Table</th>
+                            <th scope="col">Waiter</th>
+                            <th scope="col">Items</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td><strong>#{{ order.id }}</strong><br><small>{{ order.created_at|date:"M d, Y H:i" }}</small></td>
+                            <td>{{ order.get_order_type_display }}</td>
+                            <td>{% if order.table %}{{ order.table.table_no }}{% else %}Takeaway{% endif %}</td>
+                            <td>{{ order.waiter.name|default:order.waiter.username }}</td>
+                            <td>{{ order.items.count }}</td>
+                            <td>Rs. {{ order.total_amount }}</td>
+                            <td>
+                                <span class="om-status-badge {% if order.status == 'ACTIVE' %}is-available{% else %}is-inactive{% endif %}">
+                                    <span aria-hidden="true"></span>{{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="om-actions">
+                                    <a href="{% url 'dineva:owner-order-detail' order.id %}">
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                        Details
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <h2>{% if has_active_filters %}No matching orders{% else %}No orders found{% endif %}</h2>
+                <p>{% if has_active_filters %}Adjust the search or filters to see more orders.{% else %}Orders created by waiters for {{ restaurant.name }} will appear here.{% endif %}</p>
+            </div>
+        {% endif %}
+
+        {% if page_obj.has_other_pages %}
+            <nav class="om-pagination" aria-label="Order pagination">
+                <span class="om-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <div class="btn-group">
+                    {% if page_obj.has_previous %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

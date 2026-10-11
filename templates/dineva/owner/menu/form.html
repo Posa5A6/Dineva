@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-menu-form-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=2" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="owner-menu-form-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Menu Management</p>
+            <h1 id="owner-menu-form-title">{{ title }}</h1>
+            <p>{% if mode == "edit" %}Update this item without changing its restaurant ownership.{% else %}Create a menu item for your restaurant.{% endif %}</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:owner-menu-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Menu
+        </a>
+    </header>
+
+    <form class="om-form-card" method="post" enctype="multipart/form-data" novalidate data-owner-menu-form>
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div class="alert alert-danger om-form-alert">{{ error }}</div>
+        {% endfor %}
+
+        <section class="om-form-section" aria-labelledby="menu-item-basics-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="menu-item-basics-title">Item details</h2>
+                    <p>These details are scoped to your restaurant only.</p>
+                </div>
+            </div>
+            <div class="om-form-grid">
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.category.id_for_label }}">Category</label>
+                    {{ form.category }}
+                    {% for error in form.category.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+                    {{ form.name }}
+                    {% for error in form.name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.price.id_for_label }}">Price</label>
+                    {{ form.price }}
+                    {% for error in form.price.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field om-field--full">
+                    <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+                    {{ form.description }}
+                    {% for error in form.description.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="om-form-section" aria-labelledby="menu-item-photo-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-image" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="menu-item-photo-title">Item photo</h2>
+                    <p>JPG and PNG images are validated on the server before saving.</p>
+                </div>
+            </div>
+            <div class="om-upload-grid">
+                <div class="om-image-preview" data-owner-menu-image-preview>
+                    {% if item and item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.name }} image preview">
+                    {% else %}
+                        <span aria-hidden="true"><i class="bi bi-card-image"></i></span>
+                        <p>No image selected</p>
+                    {% endif %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.image.id_for_label }}">Image</label>
+                    {{ form.image }}
+                    {% if form.image.help_text %}<div class="form-help">{{ form.image.help_text }}</div>{% endif %}
+                    {% for error in form.image.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="om-form-section" aria-labelledby="menu-item-status-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-toggle2-on" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="menu-item-status-title">Status</h2>
+                    <p>Availability is for sold-out items; active status controls whether the item remains on the current menu.</p>
+                </div>
+            </div>
+            <div class="om-check-row">
+                <label class="om-status-check">
+                    {{ form.is_available }}
+                    <span>Available for ordering</span>
+                </label>
+                <label class="om-status-check">
+                    {{ form.is_active }}
+                    <span>Active on menu</span>
+                </label>
+            </div>
+            {% for error in form.is_available.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            {% for error in form.is_active.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </section>
+
+        <div class="om-form-actions">
+            <a class="btn om-btn-secondary" href="{% url 'dineva:owner-menu-list' %}">Cancel</a>
+            <button class="btn om-btn-primary" type="submit" data-owner-menu-submit>
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                Save Item
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/owner_menu_form.js' %}?v=1" defer></script>
+{% endblock %}

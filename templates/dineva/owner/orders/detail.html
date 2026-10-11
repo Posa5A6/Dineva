@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Order #{{ order.id }} | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-order-detail-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="owner-order-detail-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Orders Overview</p>
+            <h1 id="owner-order-detail-title">Order #{{ order.id }}</h1>
+            <p>Restaurant-scoped order record for {{ restaurant.name }}.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:owner-order-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Orders
+        </a>
+    </header>
+
+    <section class="om-form-card" aria-labelledby="order-summary-title">
+        <div class="om-form-section">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="order-summary-title">Order summary</h2>
+                    <p>Owners can monitor progress here without changing waiter or kitchen workflow state.</p>
+                </div>
+            </div>
+            <dl class="od-restaurant-details">
+                <div>
+                    <dt>Type</dt>
+                    <dd>{{ order.get_order_type_display }}</dd>
+                </div>
+                <div>
+                    <dt>Table</dt>
+                    <dd>{% if order.table %}{{ order.table.table_no }}{% else %}Takeaway{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>Waiter</dt>
+                    <dd>{{ order.waiter.name|default:order.waiter.username }}</dd>
+                </div>
+                <div>
+                    <dt>Status</dt>
+                    <dd>{{ order.get_status_display }}</dd>
+                </div>
+                <div>
+                    <dt>Total</dt>
+                    <dd>Rs. {{ order.total_amount }}</dd>
+                </div>
+                <div>
+                    <dt>Created</dt>
+                    <dd>{{ order.created_at|date:"M d, Y H:i" }}</dd>
+                </div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="order-correction-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="order-correction-title">Completed-order correction</h2>
+                <p>Corrections are recorded as audit notes. Payments, item snapshots, and totals are not changed here.</p>
+            </div>
+        </div>
+        {% if can_record_correction %}
+            <form class="p-3 pt-0" method="post" action="{% url 'dineva:owner-order-correction' order.id %}" novalidate>
+                {% csrf_token %}
+                <div class="om-field">
+                    <label class="form-label" for="{{ correction_form.reason.id_for_label }}">Correction reason</label>
+                    {{ correction_form.reason }}
+                    <div class="form-help">Required. Describe the correction need without changing financial records.</div>
+                    {% for error in correction_form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-form-actions">
+                    <button class="btn om-btn-primary" type="submit">
+                        <i class="bi bi-journal-plus" aria-hidden="true"></i>
+                        Record Correction
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-lock" aria-hidden="true"></i></span>
+                <h2>Correction unavailable</h2>
+                <p>Only completed orders can receive owner correction audit notes.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="order-items-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="order-items-title">Items and price snapshots</h2>
+                <p>Prices shown here are the stored order-item snapshots.</p>
+            </div>
+        </div>
+        <div class="om-table-scroll">
+            <table class="table table-hover align-middle om-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Snapshot Price</th>
+                        <th scope="col">Line Total</th>
+                        <th scope="col">Kitchen Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in order_item_rows %}
+                    <tr>
+                        {% with order_item=row.order_item %}
+                        <td>{{ order_item.item.name }}</td>
+                        <td>{{ order_item.quantity }}</td>
+                        <td>Rs. {{ order_item.price }}</td>
+                        <td>Rs. {{ row.line_total }}</td>
+                        <td>{{ order_item.get_status_display }}</td>
+                        {% endwith %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="order-history-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="order-history-title">Order history</h2>
+                <p>Status events are recorded with the acting user and timestamp.</p>
+            </div>
+        </div>
+        {% if history_entries %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Time</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in history_entries %}
+                        <tr>
+                            <td>{{ entry.created_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ entry.get_action_display }}</td>
+                            <td>{{ entry.user.name|default:entry.user.username }}</td>
+                            <td>{{ entry.description|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <h2>No history entries</h2>
+                <p>Order workflow events will appear here as staff act on this order.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="order-payments-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="order-payments-title">Payments</h2>
+                <p>Legacy order payments and consolidated session invoice payments are displayed for context and cannot be edited here.</p>
+            </div>
+        </div>
+        {% if session_invoice %}
+            <div class="alert alert-info m-3" role="note">
+                This order round belongs to consolidated invoice
+                <a href="{% url 'dineva:owner-billing-invoice-detail' session_invoice.id %}">{{ session_invoice.invoice_number }}</a>.
+                Final payable: Rs. {{ session_invoice.grand_total }};
+                successful payments: Rs. {{ session_invoice.billing_paid_total }};
+                balance: Rs. {{ session_invoice.billing_balance_due }}.
+            </div>
+        {% endif %}
+        {% if payments %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Method</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Paid At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>Rs. {{ payment.amount }}</td>
+                            <td>{{ payment.get_payment_method_display }}</td>
+                            <td>{{ payment.get_payment_status_display }}</td>
+                            <td>{% if payment.paid_at %}{{ payment.paid_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <h2>No payments recorded</h2>
+                <p>Payment capture will be handled in a later phase after billing rules are confirmed.</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

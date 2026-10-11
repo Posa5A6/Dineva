@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Round | Dineva{% endblock %}
+{% block body_class %}workspace-page waiter-session-round-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="add-round-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Additional Round</p>
+            <h1 id="add-round-title">Table {{ session.table.table_no }}</h1>
+            <p>Add another order round to the existing open table session.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-session-detail' session.id %}">Back to Session</a>
+    </header>
+
+    <form class="om-form-card" method="post" novalidate data-waiter-round-form data-session-detail-url="{% url 'dineva:waiter-session-detail' session.id %}">
+        {% csrf_token %}
+        {{ form.submission_key }}
+        <div class="alert alert-danger om-form-alert d-none" role="alert" data-order-form-errors></div>
+        <div class="alert alert-success om-form-alert d-none" role="status" data-order-form-success></div>
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger om-form-alert" role="alert">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <section class="om-form-section" aria-labelledby="round-items-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="round-items-title">Menu items</h2>
+                    <p>Prices are snapshotted from the current menu when saved.</p>
+                </div>
+            </div>
+            {% if form.menu_lines %}
+                <div class="om-table-scroll">
+                    <table class="table table-hover align-middle om-table">
+                        <thead><tr><th>Item</th><th>Category</th><th>Price</th><th>Quantity</th></tr></thead>
+                        <tbody>
+                        {% for line in form.menu_lines %}
+                            <tr data-menu-line data-item-name="{{ line.item.name }}" data-item-price="{{ line.item.price }}">
+                                <td>
+                                    <div class="om-primary-cell">
+                                        <strong>{{ line.item.name }}</strong>
+                                        {% if line.item.description %}<small>{{ line.item.description }}</small>{% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ line.item.category }}</td>
+                                <td>Rs. {{ line.item.price }}</td>
+                                <td>
+                                    {{ line.field }}
+                                    <div class="form-help">Line: Rs. <span data-line-total>0.00</span></div>
+                                    {% for error in line.field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="om-empty-state">
+                    <h2>No available menu items</h2>
+                    <p>Ask an Owner to add active available menu items before adding rounds.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="om-form-section" aria-labelledby="round-summary-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-calculator" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="round-summary-title">Round summary</h2>
+                    <p>This preview updates in the browser. Dineva recalculates the saved round total on the server.</p>
+                </div>
+            </div>
+            <div class="od-restaurant-details">
+                <div>
+                    <dt>Selected Items</dt>
+                    <dd data-cart-count>0</dd>
+                </div>
+                <div>
+                    <dt>Preview Total</dt>
+                    <dd>Rs. <span data-cart-total>0.00</span></dd>
+                </div>
+            </div>
+        </section>
+
+        <div class="om-form-actions">
+            <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-session-detail' session.id %}">Cancel</a>
+            <button class="btn om-btn-primary" type="submit" data-order-submit {% if not form.menu_lines %}disabled{% endif %}>
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Add Round
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/waiter_orders.js' %}?v=2" defer></script>
+{% endblock %}

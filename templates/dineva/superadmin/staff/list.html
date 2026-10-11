@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Staff Management | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-staff-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=8" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+    {% include "dineva/shared/staff_list_panel.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/superadmin.js' %}?v=7" defer></script>
+    <script src="{% static 'dineva/js/superadmin_restaurants.js' %}?v=2" defer></script>
+{% endblock %}
