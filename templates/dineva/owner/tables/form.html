@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-table-form-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="owner-table-form-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Table Management</p>
+            <h1 id="owner-table-form-title">{{ title }}</h1>
+            <p>{% if mode == "edit" %}Update this table for your restaurant only.{% else %}Create a dine-in table for waiter order assignment.{% endif %}</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:owner-table-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Tables
+        </a>
+    </header>
+
+    <form class="om-form-card" method="post" novalidate>
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}
+            <div class="alert alert-danger om-form-alert">{{ error }}</div>
+        {% endfor %}
+
+        <section class="om-form-section" aria-labelledby="table-basics-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="table-basics-title">Table details</h2>
+                    <p>Identifiers must be unique within your restaurant.</p>
+                </div>
+            </div>
+            <div class="om-form-grid">
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.table_no.id_for_label }}">Table identifier</label>
+                    {{ form.table_no }}
+                    {% for error in form.table_no.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.capacity.id_for_label }}">Capacity</label>
+                    {{ form.capacity }}
+                    {% for error in form.capacity.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <div class="om-form-actions">
+            <a class="btn om-btn-secondary" href="{% url 'dineva:owner-table-list' %}">Cancel</a>
+            <button class="btn om-btn-primary" type="submit">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                Save Table
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

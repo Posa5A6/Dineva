@@ -21,6 +21,26 @@
     <a class="skip-link" href="#main-content">Skip to content</a>
     {% block intro %}{% endblock %}
 
+    {% if user.is_authenticated and request.session.dineva_impersonation_audit_id %}
+        <section class="impersonation-banner" aria-label="Active impersonation">
+            <div>
+                <strong>Impersonation active</strong>
+                <span>
+                    {{ request.session.dineva_impersonation_original_user_name }} is viewing as
+                    {{ request.user.name|default:request.user.username }}
+                    ({{ request.user.profile.get_role_display }}{% if request.user.profile.restaurant %}, {{ request.user.profile.restaurant.name }}{% endif %}).
+                </span>
+            </div>
+            <form method="post" action="{% url 'dineva:impersonation-stop' %}">
+                {% csrf_token %}
+                <button type="submit">
+                    <i class="bi bi-box-arrow-left" aria-hidden="true"></i>
+                    Stop Impersonation
+                </button>
+            </form>
+        </section>
+    {% endif %}
+
     {% if user.is_authenticated and route_name != "home" %}
         {% include "dineva/topbar.html" %}
         <div class="app-layout">
@@ -38,10 +58,45 @@
                 {% endif %}
                 <main id="main-content" class="app-main">
                     <nav class="app-breadcrumb" aria-label="Breadcrumb">
-                        <a href="{% url 'dineva:dashboard' %}">Home</a>
+                        {% if user.profile.role == "OWNER" %}
+                            <a href="{% url 'dineva:owner-dashboard' %}">Home</a>
+                        {% elif user.profile.role == "SUPERADMIN" %}
+                            <a href="{% url 'dineva:dashboard' %}">Home</a>
+                        {% elif user.profile.role == "WAITER" %}
+                            <a href="{% url 'dineva:waiter-dashboard' %}">Home</a>
+                        {% elif user.profile.role == "KITCHEN_STAFF" %}
+                            <a href="{% url 'dineva:kitchen-order-queue' %}">Home</a>
+                        {% else %}
+                            <a href="{% url 'dineva:home' %}">Home</a>
+                        {% endif %}
                         <span aria-hidden="true">/</span>
+                        {% if route_name == "restaurant-add" or route_name == "restaurant-edit" %}
+                            <a href="{% url 'dineva:restaurants' %}">Restaurants</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "owner-add" %}
+                            <a href="{% url 'dineva:owner-list' %}">Owners</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "staff-add" %}
+                            <a href="{% url 'dineva:staff-list' %}">Staff</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "owner-menu-add" or route_name == "owner-menu-edit" %}
+                            <a href="{% url 'dineva:owner-menu-list' %}">Menu</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "owner-table-add" or route_name == "owner-table-edit" %}
+                            <a href="{% url 'dineva:owner-table-list' %}">Tables</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "waiter-order-add" or route_name == "waiter-order-detail" %}
+                            <a href="{% url 'dineva:waiter-order-list' %}">Orders</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "owner-order-detail" %}
+                            <a href="{% url 'dineva:owner-order-list' %}">Orders</a>
+                            <span aria-hidden="true">/</span>
+                        {% elif route_name == "owner-billing-detail" %}
+                            <a href="{% url 'dineva:owner-billing-list' %}">Billing</a>
+                            <span aria-hidden="true">/</span>
+                        {% endif %}
                         <span aria-current="page">
-                            {% if route_name == "dashboard" %}Dashboard
+                            {% if route_name == "dashboard" or route_name == "owner-dashboard" %}Dashboard
                             {% elif route_name == "restaurants" %}Restaurants
                             {% elif route_name == "restaurant-add" %}Add Restaurant
                             {% elif route_name == "restaurant-edit" %}Edit Restaurant
@@ -51,7 +106,25 @@
                             {% elif route_name == "staff-add" or route_name == "owner-staff-add" %}Add Staff
                             {% elif route_name == "employee-detail" or route_name == "owner-staff-detail" %}Employee
                             {% elif route_name == "employee-edit" %}Edit Employee
+                            {% elif route_name == "impersonation-confirm" %}Confirm Impersonation
                             {% elif route_name == "owner-staff-photo" %}Update Photo
+                            {% elif route_name == "owner-menu-list" %}Menu
+                            {% elif route_name == "owner-menu-add" %}Add Menu Item
+                            {% elif route_name == "owner-menu-edit" %}Edit Menu Item
+                            {% elif route_name == "owner-table-list" %}Tables
+                            {% elif route_name == "owner-table-add" %}Add Table
+                            {% elif route_name == "owner-table-edit" %}Edit Table
+                            {% elif route_name == "owner-order-list" %}Orders
+                            {% elif route_name == "owner-order-detail" %}Order Detail
+                            {% elif route_name == "owner-billing-list" %}Billing
+                            {% elif route_name == "owner-billing-detail" %}Billing Detail
+                            {% elif route_name == "owner-reports" %}Reports
+                            {% elif route_name == "owner-restaurant-settings" %}Restaurant Settings
+                            {% elif route_name == "waiter-dashboard" %}Dashboard
+                            {% elif route_name == "waiter-order-list" %}Orders
+                            {% elif route_name == "waiter-order-add" %}New Order
+                            {% elif route_name == "waiter-order-detail" %}Order Detail
+                            {% elif route_name == "kitchen-order-queue" %}Kitchen Queue
                             {% elif route_name == "password-reset" %}Change Password
                             {% else %}Workspace{% endif %}
                         </span>
@@ -72,7 +145,7 @@
                                 {% if user.is_superuser and user.profile.role == "SUPERADMIN" %}
                                     <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:dashboard' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a></li>
                                 {% elif user.profile.role == "OWNER" %}
-                                    <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:owner-staff-list' %}"><i class="bi bi-people" aria-hidden="true"></i> Staff</a></li>
+                                    <li class="nav-item"><a class="btn btn-dark login-button" href="{% url 'dineva:owner-dashboard' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a></li>
                                 {% endif %}
                                 <li class="nav-item">
                                     <form method="post" action="{% url 'dineva:logout' %}">

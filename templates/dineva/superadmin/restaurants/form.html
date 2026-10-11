@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if mode == "edit" %}Edit{% else %}Add{% endif %} Restaurant | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-restaurant-form-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=4" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-restaurant-form" aria-labelledby="restaurant-form-title">
+    <header class="sa-page-heading">
+        <div>
+            <p class="sa-eyebrow">Restaurant Management</p>
+            <h1 id="restaurant-form-title">{% if mode == "edit" %}Edit Restaurant{% else %}Add Restaurant{% endif %}</h1>
+            <p>{% if mode == "edit" %}Update this restaurant workspace on the Dineva platform.{% else %}Create a new restaurant on the Dineva platform.{% endif %}</p>
+        </div>
+        <a class="btn sa-btn-secondary" href="{% url 'dineva:restaurants' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Restaurants
+        </a>
+    </header>
+
+    <form method="post" enctype="multipart/form-data" class="sa-form-card" novalidate data-sa-restaurant-form>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger sa-form-alert" role="alert">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="alert alert-warning sa-form-alert" role="alert">
+                Please review the highlighted fields and try again.
+            </div>
+        {% endif %}
+
+        <section class="sa-form-section" aria-labelledby="restaurant-info-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="restaurant-info-title">Restaurant Information</h2>
+                    <p>Core restaurant details used across platform management.</p>
+                </div>
+            </div>
+
+            <div class="sa-form-grid">
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">
+                        Restaurant Name <span aria-hidden="true">*</span>
+                    </label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-shop" aria-hidden="true"></i>
+                        {{ form.name }}
+                    </div>
+                    {% for error in form.name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.email.id_for_label }}">Email <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        {{ form.email }}
+                    </div>
+                    {% for error in form.email.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.contact.id_for_label }}">Contact Number <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-telephone" aria-hidden="true"></i>
+                        {{ form.contact }}
+                    </div>
+                    {% for error in form.contact.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field sa-field--full">
+                    <label class="form-label" for="{{ form.address.id_for_label }}">Address <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell sa-input-shell--textarea">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                        {{ form.address }}
+                    </div>
+                    {% for error in form.address.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="restaurant-branding-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-image" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="restaurant-branding-title">Restaurant Branding</h2>
+                    <p>Upload a JPG or PNG logo. Files are validated again on submit.</p>
+                </div>
+            </div>
+
+            <div class="sa-logo-upload">
+                <div class="sa-logo-preview" data-sa-logo-preview>
+                    {% if restaurant.logo %}
+                        <img src="{{ restaurant.logo.url }}" alt="{{ restaurant.name }} logo preview">
+                    {% else %}
+                        <span aria-hidden="true"><i class="bi bi-image"></i></span>
+                        <p>No logo selected</p>
+                    {% endif %}
+                </div>
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.logo.id_for_label }}">Logo</label>
+                    {{ form.logo }}
+                    <div class="form-text">Accepted formats: JPG, JPEG, PNG. Maximum size: 5 MB.</div>
+                    {% for error in form.logo.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="restaurant-status-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-check-circle" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="restaurant-status-title">Status</h2>
+                    <p>New restaurants are active by default and can be managed later.</p>
+                </div>
+            </div>
+            <div class="form-check sa-status-check">
+                {{ form.is_active }}
+                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+            </div>
+            {% for error in form.is_active.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </section>
+
+        <div class="sa-form-actions">
+            <button class="btn sa-btn-primary" type="submit" data-sa-submit>
+                <i class="bi bi-check2" aria-hidden="true"></i>
+                Save Restaurant
+            </button>
+            <a class="btn sa-btn-secondary" href="{% url 'dineva:restaurants' %}">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                Cancel
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/superadmin_restaurant_form.js' %}?v=1" defer></script>
+{% endblock %}

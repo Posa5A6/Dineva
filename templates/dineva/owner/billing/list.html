@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Billing & Payments | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-billing-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu" aria-labelledby="owner-billing-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Billing & Payments</p>
+            <h1 id="owner-billing-title">{{ restaurant.name }} billing</h1>
+            <p>Review legacy order bills and consolidated session invoices without double-counting table rounds.</p>
+        </div>
+    </header>
+
+    <section class="om-panel" aria-label="Owner billing overview">
+        <form class="om-toolbar" method="get">
+            <label class="om-search-control" for="owner-billing-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="owner-billing-search" name="q" type="search" value="{{ search_query }}" placeholder="Search order, table, waiter, or item">
+            </label>
+            <label class="om-filter-control">
+                <span>Payment</span>
+                <select class="form-select" name="payment" aria-label="Payment filter">
+                    <option value="due" {% if payment_filter == "due" %}selected{% endif %}>Due</option>
+                    <option value="paid" {% if payment_filter == "paid" %}selected{% endif %}>Paid</option>
+                    <option value="all" {% if payment_filter == "all" %}selected{% endif %}>All</option>
+                </select>
+            </label>
+            <label class="om-filter-control">
+                <span>Order</span>
+                <select class="form-select" name="status" aria-label="Order status filter">
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All orders</option>
+                    <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+                    <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if status_filter == "cancelled" %}selected{% endif %}>Cancelled</option>
+                </select>
+            </label>
+            <button class="btn om-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Filter
+            </button>
+            {% if has_active_filters %}
+                <a class="btn om-btn-ghost" href="{% url 'dineva:owner-billing-list' %}">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if billing_records %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Bill</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Table</th>
+                            <th scope="col">Waiter</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Paid</th>
+                            <th scope="col">Balance</th>
+                            <th scope="col">Payment</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for record in billing_records %}
+                        <tr>
+                            <td><strong>{{ record.label }}</strong><br><small>{{ record.date|date:"M d, Y H:i" }}</small></td>
+                            <td>{{ record.order_type }}</td>
+                            <td>{{ record.table }}</td>
+                            <td>{{ record.waiter }}</td>
+                            <td>Rs. {{ record.total_amount }}</td>
+                            <td>Rs. {{ record.paid_total }}</td>
+                            <td>Rs. {{ record.balance_due }}</td>
+                            <td>
+                                <span class="om-status-badge {% if record.is_paid %}is-available{% else %}is-inactive{% endif %}">
+                                    <span aria-hidden="true"></span>{% if record.is_paid %}Paid{% else %}Due{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="om-actions">
+                                    <a href="{{ record.detail_url }}">
+                                        <i class="bi bi-cash-coin" aria-hidden="true"></i>
+                                        Billing
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <h2>{% if has_active_filters %}No matching billing records{% else %}No billable orders{% endif %}</h2>
+                <p>{% if has_active_filters %}Adjust the search or filters to see more orders.{% else %}Orders created by waiters for {{ restaurant.name }} will appear here when billing is due.{% endif %}</p>
+            </div>
+        {% endif %}
+
+        {% if page_obj.has_other_pages %}
+            <nav class="om-pagination" aria-label="Billing pagination">
+                <span class="om-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <div class="btn-group">
+                    {% if page_obj.has_previous %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

@@ -23,12 +23,28 @@ def inspect_profile_photo(upload):
     return _inspect_upload(upload, PHOTO_MAX_BYTES, allow_pdf=False)
 
 
+def inspect_restaurant_logo(upload):
+    return _inspect_upload(upload, PHOTO_MAX_BYTES, allow_pdf=False)
+
+
+def inspect_menu_item_image(upload):
+    return _inspect_upload(upload, PHOTO_MAX_BYTES, allow_pdf=False)
+
+
 def inspect_id_proof(upload):
     return _inspect_upload(upload, ID_PROOF_MAX_BYTES, allow_pdf=True)
 
 
 def validate_profile_photo(upload):
     inspect_profile_photo(upload)
+
+
+def validate_restaurant_logo(upload):
+    inspect_restaurant_logo(upload)
+
+
+def validate_menu_item_image(upload):
+    inspect_menu_item_image(upload)
 
 
 def validate_id_proof_file(upload):

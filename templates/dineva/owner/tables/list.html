@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Table Management | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-table-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu" aria-labelledby="owner-table-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Table Management</p>
+            <h1 id="owner-table-title">{{ restaurant.name }} tables</h1>
+            <p>Manage dine-in tables for waiter order assignment.</p>
+        </div>
+        <a class="btn om-btn-primary" href="{% url 'dineva:owner-table-add' %}">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            Add Table
+        </a>
+    </header>
+
+    <section class="om-panel" aria-label="Table filters and results">
+        <form class="om-toolbar" method="get">
+            <label class="om-search-control" for="owner-table-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="owner-table-search" name="q" type="search" value="{{ search_query }}" placeholder="Search table identifier">
+            </label>
+            <label class="om-filter-control">
+                <span>Status</span>
+                <select class="form-select" name="status" aria-label="Table status filter">
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
+                    <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Inactive</option>
+                    <option value="available" {% if status_filter == "available" %}selected{% endif %}>Available</option>
+                    <option value="occupied" {% if status_filter == "occupied" %}selected{% endif %}>Occupied</option>
+                    <option value="reserved" {% if status_filter == "reserved" %}selected{% endif %}>Reserved</option>
+                </select>
+            </label>
+            <button class="btn om-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Filter
+            </button>
+            {% if has_active_filters %}
+                <a class="btn om-btn-ghost" href="{% url 'dineva:owner-table-list' %}">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if tables %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Table</th>
+                            <th scope="col">Capacity</th>
+                            <th scope="col">Operational Status</th>
+                            <th scope="col">Active</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for table in tables %}
+                        <tr>
+                            <td><strong>{{ table.table_no }}</strong></td>
+                            <td>{{ table.capacity }}</td>
+                            <td>
+                                <span class="om-status-badge {% if table.status == 'AVAILABLE' %}is-available{% elif table.status == 'OCCUPIED' %}is-busy{% else %}is-inactive{% endif %}">
+                                    <span aria-hidden="true"></span>{{ table.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if table.is_active %}
+                                    <span class="om-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                {% else %}
+                                    <span class="om-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="om-actions">
+                                    <a href="{% url 'dineva:owner-table-edit' table.id %}">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                        Edit
+                                    </a>
+                                    <form method="post" action="{% url 'dineva:owner-table-status' table.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit">
+                                            {% if table.is_active %}Deactivate{% else %}Reactivate{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i></span>
+                <h2>{% if has_active_filters %}No matching tables{% else %}No tables yet{% endif %}</h2>
+                <p>{% if has_active_filters %}Adjust the search or filters to see more tables.{% else %}Add the first table for {{ restaurant.name }} before dine-in ordering starts.{% endif %}</p>
+                <a class="btn om-btn-primary" href="{% url 'dineva:owner-table-add' %}">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    Add Table
+                </a>
+            </div>
+        {% endif %}
+
+        {% if page_obj.has_other_pages %}
+            <nav class="om-pagination" aria-label="Table pagination">
+                <span class="om-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <div class="btn-group">
+                    {% if page_obj.has_previous %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

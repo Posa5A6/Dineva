@@ -19,6 +19,10 @@
                     <i class="bi bi-plus-square" aria-hidden="true"></i>
                     <span>Add Restaurant</span>
                 </a>
+                <a class="{% if request.resolver_match.url_name == 'tax-profile-list' or request.resolver_match.url_name == 'tax-profile-review' %}is-active{% endif %}" href="{% url 'dineva:tax-profile-list' %}">
+                    <i class="bi bi-receipt-cutoff" aria-hidden="true"></i>
+                    <span>GST Reviews</span>
+                </a>
             </nav>
 
             <p class="app-sidebar__section">Users</p>
@@ -30,6 +34,78 @@
                 <a class="{% if request.resolver_match.url_name == 'staff-list' %}is-active{% endif %}" href="{% url 'dineva:staff-list' %}">
                     <i class="bi bi-people" aria-hidden="true"></i>
                     <span>Staff</span>
+                </a>
+            </nav>
+        {% elif user.profile.role == "OWNER" %}
+            <p class="app-sidebar__section">Restaurant</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'owner-dashboard' %}is-active{% endif %}" href="{% url 'dineva:owner-dashboard' %}">
+                    <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'owner-restaurant-settings' %}is-active{% endif %}" href="{% url 'dineva:owner-restaurant-settings' %}">
+                    <i class="bi bi-sliders" aria-hidden="true"></i>
+                    <span>Restaurant Settings</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'owner-restaurant-tax-settings' %}is-active{% endif %}" href="{% url 'dineva:owner-restaurant-tax-settings' %}">
+                    <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                    <span>GST Settings</span>
+                </a>
+            </nav>
+
+            <p class="app-sidebar__section">People</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'owner-staff-list' or request.resolver_match.url_name == 'owner-staff-add' or request.resolver_match.url_name == 'owner-staff-detail' or request.resolver_match.url_name == 'owner-staff-photo' %}is-active{% endif %}" href="{% url 'dineva:owner-staff-list' %}">
+                    <i class="bi bi-people" aria-hidden="true"></i>
+                    <span>Manage Staff</span>
+                </a>
+            </nav>
+
+            <p class="app-sidebar__section">Operations</p>
+            <nav class="app-sidebar__nav" aria-label="Upcoming owner features">
+                <a class="{% if request.resolver_match.url_name == 'owner-menu-list' or request.resolver_match.url_name == 'owner-menu-add' or request.resolver_match.url_name == 'owner-menu-edit' %}is-active{% endif %}" href="{% url 'dineva:owner-menu-list' %}">
+                    <i class="bi bi-card-list" aria-hidden="true"></i>
+                    <span>Menu Management</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'owner-table-list' or request.resolver_match.url_name == 'owner-table-add' or request.resolver_match.url_name == 'owner-table-edit' %}is-active{% endif %}" href="{% url 'dineva:owner-table-list' %}">
+                    <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+                    <span>Table Management</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'owner-order-list' or request.resolver_match.url_name == 'owner-order-detail' %}is-active{% endif %}" href="{% url 'dineva:owner-order-list' %}">
+                    <i class="bi bi-receipt" aria-hidden="true"></i>
+                    <span>Orders Overview</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'owner-billing-list' or request.resolver_match.url_name == 'owner-billing-detail' %}is-active{% endif %}" href="{% url 'dineva:owner-billing-list' %}">
+                    <i class="bi bi-cash-coin" aria-hidden="true"></i>
+                    <span>Billing & Payments</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'owner-reports' %}is-active{% endif %}" href="{% url 'dineva:owner-reports' %}">
+                    <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+                    <span>Reports</span>
+                </a>
+            </nav>
+        {% elif user.profile.role == "WAITER" %}
+            <p class="app-sidebar__section">Orders</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'waiter-dashboard' %}is-active{% endif %}" href="{% url 'dineva:waiter-dashboard' %}">
+                    <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'waiter-order-list' or request.resolver_match.url_name == 'waiter-order-detail' or request.resolver_match.url_name == 'waiter-session-detail' or request.resolver_match.url_name == 'waiter-session-add-round' or request.resolver_match.url_name == 'waiter-session-checkout' or request.resolver_match.url_name == 'waiter-session-payment' %}is-active{% endif %}" href="{% url 'dineva:waiter-order-list' %}">
+                    <i class="bi bi-receipt" aria-hidden="true"></i>
+                    <span>Orders</span>
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'waiter-order-add' %}is-active{% endif %}" href="{% url 'dineva:waiter-order-add' %}">
+                    <i class="bi bi-plus-square" aria-hidden="true"></i>
+                    <span>New Order</span>
+                </a>
+            </nav>
+        {% elif user.profile.role == "KITCHEN_STAFF" %}
+            <p class="app-sidebar__section">Kitchen</p>
+            <nav class="app-sidebar__nav">
+                <a class="{% if request.resolver_match.url_name == 'kitchen-order-queue' %}is-active{% endif %}" href="{% url 'dineva:kitchen-order-queue' %}">
+                    <i class="bi bi-person-workspace" aria-hidden="true"></i>
+                    <span>Kitchen Queue</span>
                 </a>
             </nav>
         {% endif %}

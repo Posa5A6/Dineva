@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Restaurants | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-restaurants-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-restaurants" aria-labelledby="sa-restaurants-title">
+    <header class="sa-page-heading">
+        <div>
+            <p class="sa-eyebrow">Restaurant Management</p>
+            <h1 id="sa-restaurants-title">Restaurants</h1>
+            <p>Manage restaurants, owners, staff, and restaurant status from one place.</p>
+        </div>
+        <a class="btn sa-btn-primary" href="{% url 'dineva:restaurant-add' %}">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            Add Restaurant
+        </a>
+    </header>
+
+    <div class="sa-restaurant-summary" aria-label="Restaurant summary">
+        <article>
+            <span>Total Restaurants</span>
+            <strong>{{ total_count }}</strong>
+        </article>
+        <article>
+            <span>Active</span>
+            <strong>{{ active_count }}</strong>
+        </article>
+        <article>
+            <span>Inactive</span>
+            <strong>{{ inactive_count }}</strong>
+        </article>
+    </div>
+
+    <section class="sa-restaurant-panel" aria-label="Restaurant list">
+        <form class="sa-restaurant-toolbar" method="get" action="{% url 'dineva:restaurants' %}">
+            <label class="sa-search-control" for="restaurant-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="restaurant-search" name="q" type="search" value="{{ search_query }}" placeholder="Search restaurants...">
+            </label>
+
+            <label class="sa-filter-control" for="restaurant-status">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                <select id="restaurant-status" name="status" class="form-select" aria-label="Filter restaurants by status">
+                    <option value="all"{% if status_filter == "all" %} selected{% endif %}>All</option>
+                    <option value="active"{% if status_filter == "active" %} selected{% endif %}>Active</option>
+                    <option value="inactive"{% if status_filter == "inactive" %} selected{% endif %}>Inactive</option>
+                </select>
+            </label>
+
+            <button class="btn sa-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Apply
+            </button>
+            {% if has_active_filters %}
+                <a class="btn sa-btn-ghost" href="{% url 'dineva:restaurants' %}">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    Clear
+                </a>
+            {% endif %}
+        </form>
+
+        {% if restaurants %}
+            <div class="sa-table-scroll" data-sa-table-scroll>
+                <table class="table table-hover align-middle sa-data-table sa-restaurant-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Restaurant</th>
+                            <th scope="col">Contact</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Owners</th>
+                            <th scope="col">Waiters</th>
+                            <th scope="col">Kitchen Staff</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for restaurant in restaurants %}
+                        <tr>
+                            <td>
+                                <div class="sa-restaurant-name">
+                                    {% if restaurant.logo %}
+                                        <img class="sa-restaurant-logo" src="{{ restaurant.logo.url }}" alt="{{ restaurant.name }} logo">
+                                    {% else %}
+                                        <span class="sa-restaurant-logo sa-restaurant-logo--fallback" aria-hidden="true">
+                                            <i class="bi bi-shop"></i>
+                                        </span>
+                                    {% endif %}
+                                    <strong>{{ restaurant.name }}</strong>
+                                </div>
+                            </td>
+                            <td>{{ restaurant.contact }}</td>
+                            <td><a href="mailto:{{ restaurant.email }}">{{ restaurant.email }}</a></td>
+                            <td>{{ restaurant.owner_count }}</td>
+                            <td>{{ restaurant.waiter_count }}</td>
+                            <td>{{ restaurant.kitchen_staff_count }}</td>
+                            <td>
+                                {% if restaurant.is_active %}
+                                    <span class="sa-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                {% else %}
+                                    <span class="sa-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="sa-restaurant-actions">
+                                    <a href="{% url 'dineva:restaurant-edit' restaurant.id %}">
+                                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                                        Edit
+                                    </a>
+                                    <form method="post" action="{% url 'dineva:restaurant-status' restaurant.id %}" data-sa-confirm="Are you sure you want to {% if restaurant.is_active %}deactivate{% else %}activate{% endif %} this restaurant?">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="q" value="{{ search_query }}">
+                                        <input type="hidden" name="status" value="{{ status_filter }}">
+                                        <input type="hidden" name="page" value="{{ page_obj.number }}">
+                                        <button type="submit">
+                                            {% if restaurant.is_active %}
+                                                <i class="bi bi-x-circle" aria-hidden="true"></i>
+                                                Deactivate
+                                            {% else %}
+                                                <i class="bi bi-check-circle" aria-hidden="true"></i>
+                                                Activate
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+                <nav class="sa-pagination" aria-label="Restaurant pages">
+                    {% if page_obj.has_previous %}
+                        <a class="btn sa-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                            Previous
+                        </a>
+                    {% else %}
+                        <span class="btn sa-btn-secondary disabled" aria-disabled="true">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                            Previous
+                        </span>
+                    {% endif %}
+
+                    <span class="sa-pagination__status">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a class="btn sa-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">
+                            Next
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    {% else %}
+                        <span class="btn sa-btn-secondary disabled" aria-disabled="true">
+                            Next
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </span>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="sa-restaurant-empty">
+                <span class="sa-empty-state__icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                {% if has_active_filters %}
+                    <h2>No restaurants match your current filters.</h2>
+                    <p>Try a different search term or clear the status filter.</p>
+                    <a class="btn sa-btn-secondary" href="{% url 'dineva:restaurants' %}">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                        Clear filters
+                    </a>
+                {% else %}
+                    <h2>No restaurants yet</h2>
+                    <p>Add your first restaurant to start managing the Dineva platform.</p>
+                    <a class="btn sa-btn-primary" href="{% url 'dineva:restaurant-add' %}">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        Add Restaurant
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/superadmin.js' %}?v=3" defer></script>
+    <script src="{% static 'dineva/js/superadmin_restaurants.js' %}?v=1" defer></script>
+{% endblock %}

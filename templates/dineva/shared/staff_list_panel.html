@@ -1,0 +1,211 @@
+<section class="sa-staff" aria-labelledby="staff-management-title">
+    <header class="sa-page-heading">
+        <div>
+            <p class="sa-eyebrow">{{ staff_page_eyebrow }}</p>
+            <h1 id="staff-management-title">{{ staff_page_title }}</h1>
+            <p>{{ staff_page_description }}</p>
+        </div>
+        <a class="btn sa-btn-primary" href="{{ staff_add_url }}">
+            <i class="bi bi-person-plus" aria-hidden="true"></i>
+            Add Staff
+        </a>
+    </header>
+
+    <section class="sa-staff-panel" aria-label="Staff list">
+        <form class="sa-staff-toolbar" method="get" action="{{ staff_list_url }}">
+            <label class="sa-search-control" for="staff-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="staff-search" name="q" type="search" value="{{ search_query }}" placeholder="{{ staff_search_placeholder }}">
+            </label>
+
+            <label class="sa-filter-control" for="staff-role">
+                <i class="bi bi-person-badge" aria-hidden="true"></i>
+                <select id="staff-role" name="role" class="form-select" aria-label="Filter staff by role">
+                    <option value="all"{% if role_filter == "all" %} selected{% endif %}>All Staff</option>
+                    <option value="{{ waiter_role }}"{% if role_filter == waiter_role %} selected{% endif %}>Waiters</option>
+                    <option value="{{ kitchen_staff_role }}"{% if role_filter == kitchen_staff_role %} selected{% endif %}>Kitchen Staff</option>
+                </select>
+            </label>
+
+            <label class="sa-filter-control" for="staff-status">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                <select id="staff-status" name="status" class="form-select" aria-label="Filter staff by account status">
+                    <option value="all"{% if status_filter == "all" %} selected{% endif %}>All</option>
+                    <option value="active"{% if status_filter == "active" %} selected{% endif %}>Active</option>
+                    <option value="inactive"{% if status_filter == "inactive" %} selected{% endif %}>Inactive</option>
+                </select>
+            </label>
+
+            <button class="btn sa-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Apply
+            </button>
+            {% if has_active_filters %}
+                <a class="btn sa-btn-ghost" href="{{ staff_list_url }}">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    Clear Filters
+                </a>
+            {% endif %}
+        </form>
+
+        {% if staff_members %}
+            <div class="sa-result-strip">
+                Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} matching staff member{{ page_obj.paginator.count|pluralize }}.
+            </div>
+
+            <div class="sa-table-scroll" data-sa-table-scroll>
+                <table class="table table-hover align-middle sa-data-table sa-staff-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Photo</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Username</th>
+                            <th scope="col">Public ID</th>
+                            <th scope="col">Role</th>
+                            {% if staff_show_restaurant %}
+                                <th scope="col">Restaurant</th>
+                            {% endif %}
+                            <th scope="col">Email</th>
+                            <th scope="col">Contact</th>
+                            <th scope="col">Account Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for staff in staff_members %}
+                        <tr>
+                            <td>
+                                {% if staff.photo %}
+                                    <img class="sa-staff-avatar" src="{% url 'dineva:employee-photo' staff.user_id %}" alt="{{ staff.user.name }} profile photo">
+                                {% else %}
+                                    <span class="sa-staff-avatar sa-staff-avatar--fallback" aria-hidden="true">
+                                        {{ staff.user.name|default:staff.user.username|slice:":1"|upper }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ staff.user.name }}</strong></td>
+                            <td>@{{ staff.user.username }}</td>
+                            <td>{{ staff.public_id }}</td>
+                            <td>
+                                <span class="sa-role-pill {% if staff.role == kitchen_staff_role %}is-kitchen{% else %}is-waiter{% endif %}">
+                                    {% if staff.role == kitchen_staff_role %}
+                                        <i class="bi bi-person-workspace" aria-hidden="true"></i>
+                                    {% else %}
+                                        <i class="bi bi-person-badge" aria-hidden="true"></i>
+                                    {% endif %}
+                                    {{ staff.get_role_display }}
+                                </span>
+                            </td>
+                            {% if staff_show_restaurant %}
+                                <td>
+                                    <div class="sa-staff-restaurant">
+                                        <span>{{ staff.restaurant.name }}</span>
+                                        {% if not staff.restaurant.is_active %}
+                                            <small>Restaurant inactive</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            {% endif %}
+                            <td><a href="mailto:{{ staff.user.email }}">{{ staff.user.email }}</a></td>
+                            <td>{{ staff.contact }}</td>
+                            <td>
+                                {% if staff.user.is_active %}
+                                    <span class="sa-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                {% else %}
+                                    <span class="sa-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="sa-staff-actions">
+                                    <a href="{% url staff_detail_route staff.user_id %}">
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                        View
+                                    </a>
+                                    {% if staff_edit_route %}
+                                        <a href="{% url staff_edit_route staff.user_id %}">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                                            Edit
+                                        </a>
+                                    {% endif %}
+                                    {% if staff_impersonate_route %}
+                                        <a href="{% url staff_impersonate_route staff.user_id %}">
+                                            <i class="bi bi-person-lock" aria-hidden="true"></i>
+                                            Impersonate
+                                        </a>
+                                    {% endif %}
+                                    {% if staff_status_route %}
+                                        <form method="post" action="{% url staff_status_route staff.user_id %}" data-sa-confirm="Are you sure you want to {% if staff.user.is_active %}deactivate{% else %}reactivate{% endif %} this staff account?">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <button type="submit">
+                                                {% if staff.user.is_active %}
+                                                    <i class="bi bi-person-x" aria-hidden="true"></i>
+                                                    Deactivate
+                                                {% else %}
+                                                    <i class="bi bi-person-check" aria-hidden="true"></i>
+                                                    Reactivate
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+                <nav class="sa-pagination" aria-label="Staff pages">
+                    {% if page_obj.has_previous %}
+                        <a class="btn sa-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                            Previous
+                        </a>
+                    {% else %}
+                        <span class="btn sa-btn-secondary disabled" aria-disabled="true">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                            Previous
+                        </span>
+                    {% endif %}
+
+                    <span class="sa-pagination__status">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a class="btn sa-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">
+                            Next
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    {% else %}
+                        <span class="btn sa-btn-secondary disabled" aria-disabled="true">
+                            Next
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </span>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="sa-staff-empty">
+                <span class="sa-empty-state__icon"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+                {% if has_active_filters %}
+                    <h2>No Staff match your current filters.</h2>
+                    <p>Try a different search term, role, or account-status filter.</p>
+                    <a class="btn sa-btn-secondary" href="{{ staff_list_url }}">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                        Clear Filters
+                    </a>
+                {% else %}
+                    <h2>No Staff registered yet</h2>
+                    <p>{{ staff_empty_message }}</p>
+                    <a class="btn sa-btn-primary" href="{{ staff_add_url }}">
+                        <i class="bi bi-person-plus" aria-hidden="true"></i>
+                        Add Staff
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+</section>

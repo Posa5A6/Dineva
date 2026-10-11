@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Kitchen Queue | Dineva{% endblock %}
+{% block body_class %}workspace-page kitchen-queue-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu" aria-labelledby="kitchen-queue-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Kitchen Queue</p>
+            <h1 id="kitchen-queue-title">{{ restaurant.name }} kitchen items</h1>
+            <p>Update preparation status for active orders from your restaurant.</p>
+        </div>
+    </header>
+
+    <section class="om-panel" aria-label="Kitchen item queue">
+        <form class="om-toolbar" method="get">
+            <label class="om-filter-control">
+                <span>Status</span>
+                <select class="form-select" name="status" aria-label="Kitchen status filter">
+                    <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pending</option>
+                    <option value="preparing" {% if status_filter == "preparing" %}selected{% endif %}>Preparing</option>
+                    <option value="ready" {% if status_filter == "ready" %}selected{% endif %}>Ready</option>
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All</option>
+                </select>
+            </label>
+            <button class="btn om-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Filter
+            </button>
+        </form>
+
+        {% if order_items %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Item</th>
+                            <th scope="col">Quantity</th>
+                            <th scope="col">Table/Type</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order_item in order_items %}
+                        <tr>
+                            <td><strong>#{{ order_item.assign_order.id }}</strong></td>
+                            <td>{{ order_item.item.name }}</td>
+                            <td>{{ order_item.quantity }}</td>
+                            <td>
+                                {% if order_item.assign_order.table %}
+                                    Table {{ order_item.assign_order.table.table_no }}
+                                {% else %}
+                                    {{ order_item.assign_order.get_order_type_display }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="om-status-badge {% if order_item.status == 'READY' %}is-available{% elif order_item.status == 'PREPARING' %}is-busy{% else %}is-inactive{% endif %}">
+                                    <span aria-hidden="true"></span>{{ order_item.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="om-actions">
+                                    {% if order_item.status == "PENDING" %}
+                                        <form method="post" action="{% url 'dineva:kitchen-order-item-status' order_item.id preparing_status %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <button type="submit">Start preparing</button>
+                                        </form>
+                                    {% elif order_item.status == "PREPARING" %}
+                                        <form method="post" action="{% url 'dineva:kitchen-order-item-status' order_item.id ready_status %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <button type="submit">Mark ready</button>
+                                        </form>
+                                    {% else %}
+                                        <span class="om-muted-action">No kitchen action</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-person-workspace" aria-hidden="true"></i></span>
+                <h2>No kitchen items</h2>
+                <p>Active order items will appear here when waiters submit them.</p>
+            </div>
+        {% endif %}
+
+        {% if page_obj.has_other_pages %}
+            <nav class="om-pagination" aria-label="Kitchen pagination">
+                <span class="om-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <div class="btn-group">
+                    {% if page_obj.has_previous %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

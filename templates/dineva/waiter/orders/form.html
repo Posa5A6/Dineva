@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Order | Dineva{% endblock %}
+{% block body_class %}workspace-page waiter-order-form-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="waiter-order-form-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Waiter Orders</p>
+            <h1 id="waiter-order-form-title">New order</h1>
+            <p>Prices are calculated from the current {{ restaurant.name }} menu when the order is saved.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-order-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Orders
+        </a>
+    </header>
+
+    <form class="om-form-card" method="post" novalidate data-waiter-order-form data-success-list-url="{% url 'dineva:waiter-order-list' %}" data-table-availability-url="{% url 'dineva:waiter-table-availability' %}">
+        {% csrf_token %}
+        {{ form.submission_key }}
+        <div class="alert alert-danger om-form-alert d-none" role="alert" data-order-form-errors></div>
+        <div class="alert alert-success om-form-alert d-none" role="status" data-order-form-success></div>
+        {% for error in form.non_field_errors %}
+            <div class="alert alert-danger om-form-alert">{{ error }}</div>
+        {% endfor %}
+
+        <section class="om-form-section" aria-labelledby="order-context-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="order-context-title">Order context</h2>
+                    <p>Dine-in orders require an active available table. Takeaway orders do not use a table.</p>
+                </div>
+            </div>
+            <div class="om-form-grid">
+                <div class="om-field">
+                    <label class="form-label" for="{{ form.order_type.id_for_label }}">Order type</label>
+                    {{ form.order_type }}
+                    {% for error in form.order_type.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="om-field" data-table-field>
+                    <label class="form-label" for="{{ form.table.id_for_label }}">Table</label>
+                    {{ form.table }}
+                    <div class="form-help" data-table-availability-message>Available tables update automatically.</div>
+                    {% for error in form.table.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="om-form-section" aria-labelledby="order-items-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="order-items-title">Menu items</h2>
+                    <p>Enter quantities only for items included in this order.</p>
+                </div>
+            </div>
+            {% if form.menu_lines %}
+                <div class="om-table-scroll">
+                    <table class="table table-hover align-middle om-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Item</th>
+                                <th scope="col">Category</th>
+                                <th scope="col">Price</th>
+                                <th scope="col">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for line in form.menu_lines %}
+                            <tr data-menu-line data-item-name="{{ line.item.name }}" data-item-price="{{ line.item.price }}">
+                                <td>
+                                    <div class="om-primary-cell">
+                                        <strong>{{ line.item.name }}</strong>
+                                        {% if line.item.description %}<small>{{ line.item.description }}</small>{% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ line.item.category }}</td>
+                                <td>Rs. {{ line.item.price }}</td>
+                                <td>
+                                    {{ line.field }}
+                                    <div class="form-help">Line: Rs. <span data-line-total>0.00</span></div>
+                                    {% for error in line.field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="om-empty-state">
+                    <span class="om-empty-state__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                    <h2>No available menu items</h2>
+                    <p>Ask an Owner to add active available menu items before creating orders.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="om-form-section" aria-labelledby="order-summary-title">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-calculator" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="order-summary-title">Order summary</h2>
+                    <p>This preview updates in the browser. Dineva recalculates the final total on save.</p>
+                </div>
+            </div>
+            <div class="od-restaurant-details">
+                <div>
+                    <dt>Selected Items</dt>
+                    <dd data-cart-count>0</dd>
+                </div>
+                <div>
+                    <dt>Preview Total</dt>
+                    <dd>Rs. <span data-cart-total>0.00</span></dd>
+                </div>
+            </div>
+        </section>
+
+        <div class="om-form-actions">
+            <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-order-list' %}">Cancel</a>
+            <button class="btn om-btn-primary" type="submit" data-order-submit {% if not form.menu_lines %}disabled{% endif %}>
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                Create Order
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/waiter_orders.js' %}?v=1" defer></script>
+{% endblock %}

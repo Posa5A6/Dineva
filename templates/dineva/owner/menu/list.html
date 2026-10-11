@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Menu Management | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-menu-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=2" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu" aria-labelledby="owner-menu-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Menu Management</p>
+            <h1 id="owner-menu-title">{{ restaurant.name }} menu</h1>
+            <p>Create items, update prices, and control active or sold-out status.</p>
+        </div>
+        <a class="btn om-btn-primary" href="{% url 'dineva:owner-menu-add' %}">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            Add Item
+        </a>
+    </header>
+
+    <section class="om-panel" aria-label="Menu item filters and results">
+        <form class="om-toolbar" method="get">
+            <label class="om-search-control" for="owner-menu-search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="owner-menu-search" name="q" type="search" value="{{ search_query }}" placeholder="Search name, category, or description">
+            </label>
+            <label class="om-filter-control">
+                <span>Category</span>
+                <select class="form-select" name="category" aria-label="Category filter">
+                    <option value="all">All categories</option>
+                    {% for category in category_options %}
+                        <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="om-filter-control">
+                <span>Status</span>
+                <select class="form-select" name="status" aria-label="Status filter">
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All statuses</option>
+                    <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Inactive</option>
+                    <option value="available" {% if status_filter == "available" %}selected{% endif %}>Available</option>
+                    <option value="unavailable" {% if status_filter == "unavailable" %}selected{% endif %}>Unavailable</option>
+                </select>
+            </label>
+            <button class="btn om-btn-secondary" type="submit">
+                <i class="bi bi-funnel" aria-hidden="true"></i>
+                Filter
+            </button>
+            {% if has_active_filters %}
+                <a class="btn om-btn-ghost" href="{% url 'dineva:owner-menu-list' %}">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if items %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Photo</th>
+                            <th scope="col">Item</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Availability</th>
+                            <th scope="col">Menu Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td>
+                                {% if item.image %}
+                                    <img class="om-item-image" src="{{ item.image.url }}" alt="{{ item.name }} photo">
+                                {% else %}
+                                    <span class="om-item-image om-item-image--empty" aria-hidden="true">
+                                        <i class="bi bi-card-image"></i>
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="om-primary-cell">
+                                    <strong>{{ item.name }}</strong>
+                                    {% if item.description %}
+                                        <small>{{ item.description }}</small>
+                                    {% else %}
+                                        <small>No description provided.</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>{{ item.category }}</td>
+                            <td>Rs. {{ item.price }}</td>
+                            <td>
+                                {% if item.is_available %}
+                                    <span class="om-status-badge is-available"><span aria-hidden="true"></span>Available</span>
+                                {% else %}
+                                    <span class="om-status-badge is-unavailable"><span aria-hidden="true"></span>Unavailable</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.is_active %}
+                                    <span class="om-status-badge is-active"><span aria-hidden="true"></span>Active</span>
+                                {% else %}
+                                    <span class="om-status-badge is-inactive"><span aria-hidden="true"></span>Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="om-actions">
+                                    <a href="{% url 'dineva:owner-menu-edit' item.id %}">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                        Edit
+                                    </a>
+                                    <form method="post" action="{% url 'dineva:owner-menu-availability' item.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit">
+                                            {% if item.is_available %}Mark unavailable{% else %}Mark available{% endif %}
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'dineva:owner-menu-status' item.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit">
+                                            {% if item.is_active %}Deactivate{% else %}Reactivate{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+                <h2>{% if has_active_filters %}No matching menu items{% else %}No menu items yet{% endif %}</h2>
+                <p>{% if has_active_filters %}Adjust the search or filters to see more items.{% else %}Add the first item for {{ restaurant.name }} to start building the menu.{% endif %}</p>
+                <a class="btn om-btn-primary" href="{% url 'dineva:owner-menu-add' %}">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    Add Item
+                </a>
+            </div>
+        {% endif %}
+
+        {% if page_obj.has_other_pages %}
+            <nav class="om-pagination" aria-label="Menu pagination">
+                <span class="om-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <div class="btn-group">
+                    {% if page_obj.has_previous %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a class="btn om-btn-secondary" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

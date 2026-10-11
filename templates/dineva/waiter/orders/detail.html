@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Order #{{ order.id }} | Dineva{% endblock %}
+{% block body_class %}workspace-page waiter-order-detail-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="waiter-order-detail-title" data-waiter-status-poll data-status-url="{% url 'dineva:waiter-order-statuses' %}" data-waiter-order-detail {% if session_state %}data-waiter-session-state{% endif %}>
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Waiter Orders</p>
+            <h1 id="waiter-order-detail-title">Order #{{ order.id }}</h1>
+            <p>Read-only order and kitchen preparation status for {{ restaurant.name }}.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% if order.table_session_id %}
+                <a class="btn om-btn-primary" href="{% url 'dineva:waiter-session-detail' order.table_session_id %}">
+                    <i class="bi bi-diagram-3" aria-hidden="true"></i>
+                    Table Session
+                </a>
+            {% endif %}
+            <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-order-list' %}">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                Back to Orders
+            </a>
+        </div>
+    </header>
+
+    <div class="alert alert-success d-none" role="status" data-session-success></div>
+    <div class="alert alert-danger d-none" role="alert" data-session-error></div>
+
+    {% if session_state %}
+        <section class="om-panel p-3" aria-labelledby="order-next-action-title" data-session-next-actions>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="od-eyebrow mb-1">Next Action</p>
+                    <h2 id="order-next-action-title" class="h5 mb-1">Serve, add more, or checkout</h2>
+                    <p class="text-muted mb-0" data-session-next-message>{{ session_state.next_message }}</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn om-btn-secondary {% if not session_state.can_add_round %}disabled{% endif %}" href="{% if session_state.can_add_round %}{% url 'dineva:waiter-session-add-round' order.table_session_id %}{% else %}#{% endif %}" data-session-add-round-link {% if not session_state.can_add_round %}aria-disabled="true"{% endif %}>
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        Customer wants more
+                    </a>
+                    <a class="btn om-btn-primary {% if not session_state.can_checkout %}disabled{% endif %}" href="{% if session_state.can_checkout %}{% url 'dineva:waiter-session-checkout' order.table_session_id %}{% else %}#{% endif %}" data-session-checkout-link {% if not session_state.can_checkout %}aria-disabled="true"{% endif %}>
+                        <i class="bi bi-receipt" aria-hidden="true"></i>
+                        Customer has finished
+                    </a>
+                </div>
+            </div>
+        </section>
+    {% elif legacy_order_state %}
+        <section class="om-panel p-3" aria-labelledby="order-next-action-title" data-legacy-order-state>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="od-eyebrow mb-1">Order Status</p>
+                    <h2 id="order-next-action-title" class="h5 mb-1">Legacy order without table session</h2>
+                    <p class="text-muted mb-1" data-legacy-order-message>{{ legacy_order_state.next_message }}</p>
+                    {% if legacy_order_state.has_success_payment %}
+                        <p class="form-help mb-0">Recorded legacy payment: Rs. <span data-legacy-order-paid>{{ legacy_order_state.paid_total }}</span></p>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn om-btn-secondary" href="{% url 'dineva:waiter-order-list' %}">
+                        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                        Back to Orders
+                    </a>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="om-form-card" aria-labelledby="waiter-order-summary-title">
+        <div class="om-form-section">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="waiter-order-summary-title">Order summary</h2>
+                    <p>Order totals and price snapshots are calculated and stored by Dineva.</p>
+                </div>
+            </div>
+            <dl class="od-restaurant-details" data-order-status-row data-order-id="{{ order.id }}">
+                <div>
+                    <dt>Type</dt>
+                    <dd>{{ order.get_order_type_display }}</dd>
+                </div>
+                <div>
+                    <dt>Table</dt>
+                    <dd>{% if order.table %}{{ order.table.table_no }}{% else %}Takeaway{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>Status</dt>
+                    <dd><span class="om-status-badge {% if order.status == 'ACTIVE' %}is-available{% else %}is-inactive{% endif %}" data-order-status><span aria-hidden="true"></span>{{ order.get_status_display }}</span></dd>
+                </div>
+                <div>
+                    <dt>Kitchen</dt>
+                    <dd data-kitchen-status>{{ order.kitchen_summary.label }} ({{ order.kitchen_summary.served_count }}/{{ order.kitchen_summary.total_count }} served)</dd>
+                </div>
+                <div>
+                    <dt>Total</dt>
+                    <dd>Rs. {{ order.total_amount }}</dd>
+                </div>
+                <div>
+                    <dt>Created</dt>
+                    <dd>{{ order.created_at|date:"M d, Y H:i" }}</dd>
+                </div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="waiter-order-items-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="waiter-order-items-title">Items</h2>
+                <p>Kitchen status refreshes while this page is visible.</p>
+                {% if ready_item_count %}
+                    <p class="mb-0"><strong>{{ ready_item_count }}</strong> item{{ ready_item_count|pluralize }} ready to serve.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="om-table-scroll">
+            <table class="table table-hover align-middle om-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Snapshot Price</th>
+                        <th scope="col">Line Total</th>
+                        <th scope="col">Kitchen Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in order_item_rows %}
+                    {% with order_item=row.order_item %}
+                    <tr data-order-item-id="{{ order_item.id }}">
+                        <td>{{ order_item.item.name }}</td>
+                        <td>{{ order_item.quantity }}</td>
+                        <td>Rs. {{ order_item.price }}</td>
+                        <td>Rs. {{ row.line_total }}</td>
+                        <td data-order-item-status>{{ order_item.get_status_display }}</td>
+                        <td data-order-item-actions>
+                            {% if order_item.status == "READY" %}
+                                <form method="post" action="{% url 'dineva:waiter-order-item-served' order_item.id %}" class="d-inline" data-waiter-serve-form>
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button class="btn om-btn-primary btn-sm" type="submit">
+                                        <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                                        Mark Served
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="waiter-order-history-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="waiter-order-history-title">Order history</h2>
+                <p>Status events are recorded by Dineva and shown for service context.</p>
+            </div>
+        </div>
+        {% if history_entries %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Time</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in history_entries %}
+                        <tr>
+                            <td>{{ entry.created_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ entry.get_action_display }}</td>
+                            <td>{{ entry.user.name|default:entry.user.username }}</td>
+                            <td>{{ entry.description|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <h2>No history entries</h2>
+                <p>Order workflow events will appear here.</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/waiter_orders.js' %}?v=2" defer></script>
+{% endblock %}

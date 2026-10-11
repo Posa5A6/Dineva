@@ -15,7 +15,7 @@
         {% if can_view_proof %}<dt class="col-sm-3">ID Proof</dt><dd class="col-sm-9">{{ employee.id_proof.get_proof_type_display }} · <a href="{% url 'dineva:id-proof-download' employee.user_id %}">Open protected document</a></dd>{% endif %}
     </dl>
     <div class="form-actions">
-        {% if user.profile.role == "SUPERADMIN" %}<a class="btn btn-dark" href="{% url 'dineva:employee-edit' employee.user_id %}">Edit details</a>{% else %}<a class="btn btn-dark" href="{% url 'dineva:owner-staff-photo' employee.user_id %}">Update photo</a>{% endif %}
+        {% if user.profile.role == "SUPERADMIN" %}<a class="btn btn-dark" href="{% url 'dineva:employee-edit' employee.user_id %}">Edit details</a><a class="btn btn-outline-dark" href="{% url 'dineva:impersonation-confirm' employee.user_id %}">Impersonate</a>{% else %}<a class="btn btn-dark" href="{% url 'dineva:owner-staff-photo' employee.user_id %}">Update photo</a>{% endif %}
         <form method="post" action="{% if user.profile.role == 'SUPERADMIN' %}{% url 'dineva:employee-status' employee.user_id %}{% else %}{% url 'dineva:owner-staff-status' employee.user_id %}{% endif %}" class="d-inline">{% csrf_token %}<button class="btn btn-outline-dark" type="submit">{% if employee.user.is_active %}Deactivate{% else %}Reactivate{% endif %}</button></form>
     </div>
 </div></section>

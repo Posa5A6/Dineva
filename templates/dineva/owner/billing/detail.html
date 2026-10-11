@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Billing #{{ order.id }} | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-billing-detail-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="owner-billing-detail-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Billing & Payments</p>
+            <h1 id="owner-billing-detail-title">Order #{{ order.id }} billing</h1>
+            <p>Payment status is calculated from recorded successful payment rows.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:owner-billing-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Billing
+        </a>
+    </header>
+
+    <section class="om-form-card" aria-labelledby="billing-summary-title">
+        <div class="om-form-section">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="billing-summary-title">Bill summary</h2>
+                    <p>Amounts are derived from stored order totals and payment records.</p>
+                </div>
+            </div>
+            <dl class="od-restaurant-details">
+                <div>
+                    <dt>Order Type</dt>
+                    <dd>{{ order.get_order_type_display }}</dd>
+                </div>
+                <div>
+                    <dt>Table</dt>
+                    <dd>{% if order.table %}{{ order.table.table_no }}{% else %}Takeaway{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>Waiter</dt>
+                    <dd>{{ order.waiter.name|default:order.waiter.username }}</dd>
+                </div>
+                <div>
+                    <dt>Order Status</dt>
+                    <dd>{{ order.get_status_display }}</dd>
+                </div>
+                <div>
+                    <dt>Order Total</dt>
+                    <dd>Rs. {{ order.total_amount }}</dd>
+                </div>
+                <div>
+                    <dt>Successful Payments</dt>
+                    <dd>Rs. {{ order.billing_paid_total }}</dd>
+                </div>
+                <div>
+                    <dt>Balance Due</dt>
+                    <dd>Rs. {{ order.billing_balance_due }}</dd>
+                </div>
+                <div>
+                    <dt>Payment Status</dt>
+                    <dd>{% if order.billing_is_paid %}Paid{% else %}Due{% endif %}</dd>
+                </div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="payment-record-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="payment-record-title">Record payment</h2>
+                <p>This records one full-order payment using the current server-side balance.</p>
+            </div>
+        </div>
+        {% if order.billing_can_record_payment %}
+            <form class="om-form p-3 pt-0" method="post">
+                {% csrf_token %}
+                {{ form.submission_key }}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.payment_method.id_for_label }}">Payment method</label>
+                        {{ form.payment_method }}
+                        {% if form.payment_method.errors %}
+                            <div class="invalid-feedback d-block">{{ form.payment_method.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Amount</label>
+                        <div class="form-control bg-light">Rs. {{ order.billing_balance_due }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn om-btn-primary w-100" type="submit">
+                            <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                            Record Payment
+                        </button>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
+                <h2>Payment recording unavailable</h2>
+                <p>{{ order.billing_blocker }}</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="billing-items-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="billing-items-title">Bill items</h2>
+                <p>Line totals use the stored price snapshot for each ordered item.</p>
+            </div>
+        </div>
+        <div class="om-table-scroll">
+            <table class="table table-hover align-middle om-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Snapshot Price</th>
+                        <th scope="col">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in order_item_rows %}
+                    {% with order_item=row.order_item %}
+                        <tr>
+                            <td>{{ order_item.item.name }}</td>
+                            <td>{{ order_item.quantity }}</td>
+                            <td>Rs. {{ order_item.price }}</td>
+                            <td>Rs. {{ row.line_total }}</td>
+                        </tr>
+                    {% endwith %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="payment-history-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="payment-history-title">Payment records</h2>
+                <p>Existing payment rows are preserved and shown read-only.</p>
+            </div>
+        </div>
+        {% if payments %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Method</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Paid At</th>
+                            <th scope="col">Recorded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>Rs. {{ payment.amount }}</td>
+                            <td>{{ payment.get_payment_method_display }}</td>
+                            <td>{{ payment.get_payment_status_display }}</td>
+                            <td>{% if payment.paid_at %}{{ payment.paid_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</td>
+                            <td>{{ payment.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <h2>No payment rows yet</h2>
+                <p>Successful manual payment records for this order will appear here.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="billing-audit-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="billing-audit-title">Order payment history</h2>
+                <p>Payment events are recorded with the acting user where the current schema supports it.</p>
+            </div>
+        </div>
+        {% if history_entries %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Time</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in history_entries %}
+                        <tr>
+                            <td>{{ entry.created_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ entry.get_action_display }}</td>
+                            <td>{{ entry.user.name|default:entry.user.username }}</td>
+                            <td>{{ entry.description|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+                <h2>No history entries</h2>
+                <p>Order workflow and payment events will appear here.</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

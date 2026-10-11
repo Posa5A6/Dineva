@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Owner | Dineva{% endblock %}
+{% block body_class %}workspace-page superadmin-owner-form-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/superadmin.css' %}?v=6" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="sa-owner-form" aria-labelledby="owner-form-title">
+    <header class="sa-page-heading">
+        <div>
+            <p class="sa-eyebrow">Owner Management</p>
+            <h1 id="owner-form-title">Add Owner</h1>
+            <p>Create an Owner account and associate the person with an active restaurant.</p>
+        </div>
+        <a class="btn sa-btn-secondary" href="{% url 'dineva:owner-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Owners
+        </a>
+    </header>
+
+    {% if not active_restaurants_available %}
+        <div class="alert alert-warning sa-form-alert" role="alert">
+            No active restaurants are available. Create or activate a restaurant before adding an Owner.
+            <a href="{% url 'dineva:restaurant-add' %}">Add Restaurant</a>
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="sa-form-card" novalidate data-sa-owner-form>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger sa-form-alert" role="alert">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="alert alert-warning sa-form-alert" role="alert">
+                Please review the highlighted fields and try again.
+            </div>
+        {% endif %}
+
+        <section class="sa-form-section" aria-labelledby="owner-info-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-person" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="owner-info-title">Owner Information</h2>
+                    <p>Personal details for the restaurant owner account.</p>
+                </div>
+            </div>
+
+            <div class="sa-form-grid">
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">Full Name <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-person" aria-hidden="true"></i>
+                        {{ form.name }}
+                    </div>
+                    {% for error in form.name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.email.id_for_label }}">Email <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        {{ form.email }}
+                    </div>
+                    {% for error in form.email.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.contact.id_for_label }}">Contact Number <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell">
+                        <i class="bi bi-telephone" aria-hidden="true"></i>
+                        {{ form.contact }}
+                    </div>
+                    {% for error in form.contact.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="sa-field sa-field--full">
+                    <label class="form-label" for="{{ form.address.id_for_label }}">Address <span aria-hidden="true">*</span></label>
+                    <div class="sa-input-shell sa-input-shell--textarea">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                        {{ form.address }}
+                    </div>
+                    {% for error in form.address.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="owner-photo-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-camera" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="owner-photo-title">Profile Photo</h2>
+                    <p>Upload the Owner's profile photo. Server validation confirms file safety, not identity.</p>
+                </div>
+            </div>
+
+            <div class="sa-owner-upload">
+                <div class="sa-owner-photo-preview" data-sa-owner-photo-preview>
+                    <span aria-hidden="true"><i class="bi bi-camera"></i></span>
+                    <p>No photo selected</p>
+                </div>
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.photo.id_for_label }}">Profile Photo <span aria-hidden="true">*</span></label>
+                    {{ form.photo }}
+                    <div class="form-text">Accepted formats: JPG, JPEG, PNG. Maximum size: 5 MB.</div>
+                    {% for error in form.photo.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="owner-restaurant-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="owner-restaurant-title">Restaurant Assignment</h2>
+                    <p>Owners can only be assigned to active restaurants.</p>
+                </div>
+            </div>
+
+            <div class="sa-field">
+                <label class="form-label" for="{{ form.restaurant.id_for_label }}">Restaurant <span aria-hidden="true">*</span></label>
+                {{ form.restaurant }}
+                {% for error in form.restaurant.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="owner-proof-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-file-earmark-lock" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="owner-proof-title">Identity Verification</h2>
+                    <p>Store one private government-issued ID proof for the Owner.</p>
+                </div>
+            </div>
+
+            <div class="sa-form-grid">
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.id_proof_type.id_for_label }}">ID Proof Type <span aria-hidden="true">*</span></label>
+                    {{ form.id_proof_type }}
+                    {% for error in form.id_proof_type.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="sa-field">
+                    <label class="form-label" for="{{ form.id_proof_file.id_for_label }}">Private Document Upload <span aria-hidden="true">*</span></label>
+                    {{ form.id_proof_file }}
+                    <div class="form-text">Accepted formats: JPG, JPEG, PNG, PDF. Maximum size: 20 MB.</div>
+                    <div class="sa-proof-file" data-sa-owner-proof-name>No document selected</div>
+                    {% for error in form.id_proof_file.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="sa-form-section" aria-labelledby="owner-access-title">
+            <div class="sa-form-section__header">
+                <span class="sa-form-section__icon"><i class="bi bi-info-circle" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="owner-access-title">Account Access</h2>
+                    <p>Dineva provisions credentials and access details automatically.</p>
+                </div>
+            </div>
+
+            <ul class="sa-account-note">
+                <li>Role is automatically assigned as <strong>OWNER</strong>.</li>
+                <li>Username and Owner public ID are generated by Dineva.</li>
+                <li>A strong random password is generated, hashed, and sent in the Welcome Email.</li>
+                <li>The ID proof is stored privately and is not included in email.</li>
+            </ul>
+        </section>
+
+        <div class="sa-form-actions">
+            <button class="btn sa-btn-primary" type="submit" data-sa-submit{% if not active_restaurants_available %} disabled{% endif %}>
+                <i class="bi bi-check2" aria-hidden="true"></i>
+                Create Owner
+            </button>
+            <a class="btn sa-btn-secondary" href="{% url 'dineva:owner-list' %}">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                Cancel
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'dineva/js/superadmin_owner_form.js' %}?v=1" defer></script>
+{% endblock %}

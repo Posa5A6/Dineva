@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Invoice {{ invoice.invoice_number }} | Dineva{% endblock %}
+{% block body_class %}workspace-page owner-billing-invoice-detail-page{% endblock %}
+
+{% block extra_head %}
+    <link href="{% static 'dineva/css/owner.css' %}?v=3" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="om-menu-form" aria-labelledby="owner-invoice-detail-title">
+    <header class="om-page-heading">
+        <div>
+            <p class="od-eyebrow">Billing & Payments</p>
+            <h1 id="owner-invoice-detail-title">Invoice {{ invoice.invoice_number }}</h1>
+            <p>Consolidated table-session bill generated from served order items and verified tax snapshots.</p>
+        </div>
+        <a class="btn om-btn-secondary" href="{% url 'dineva:owner-billing-list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Billing
+        </a>
+    </header>
+
+    <section class="om-form-card" aria-labelledby="invoice-summary-title">
+        <div class="om-form-section">
+            <div class="om-form-section__header">
+                <span class="om-form-section__icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="invoice-summary-title">Invoice summary</h2>
+                    <p>These amounts are persisted invoice snapshots and do not change when menu prices or GST settings change later.</p>
+                </div>
+            </div>
+            <dl class="od-restaurant-details">
+                <div><dt>Document</dt><dd>{{ invoice.get_document_type_display }}</dd></div>
+                <div><dt>Session</dt><dd>#{{ invoice.table_session_id }}</dd></div>
+                <div><dt>Table</dt><dd>{% if invoice.table_session.table %}{{ invoice.table_session.table.table_no }}{% else %}-{% endif %}</dd></div>
+                <div><dt>Finalized By</dt><dd>{{ invoice.finalized_by.name|default:invoice.finalized_by.username }}</dd></div>
+                <div><dt>Finalized At</dt><dd>{{ invoice.finalized_at|date:"M d, Y H:i" }}</dd></div>
+                <div><dt>Subtotal</dt><dd>Rs. {{ invoice.subtotal }}</dd></div>
+                <div><dt>Taxable Value</dt><dd>Rs. {{ invoice.taxable_value }}</dd></div>
+                <div><dt>CGST</dt><dd>Rs. {{ invoice.cgst_amount }}</dd></div>
+                <div><dt>SGST</dt><dd>Rs. {{ invoice.sgst_amount }}</dd></div>
+                <div><dt>IGST</dt><dd>Rs. {{ invoice.igst_amount }}</dd></div>
+                <div><dt>Total GST</dt><dd>Rs. {{ invoice.total_gst }}</dd></div>
+                <div><dt>Final Payable</dt><dd>Rs. {{ invoice.grand_total }}</dd></div>
+                <div><dt>Successful Payments</dt><dd>Rs. {{ invoice.billing_paid_total }}</dd></div>
+                <div><dt>Balance Due</dt><dd>Rs. {{ invoice.billing_balance_due }}</dd></div>
+                <div><dt>Payment Status</dt><dd>{% if invoice.billing_is_paid %}Paid{% else %}Due{% endif %}</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="invoice-lines-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="invoice-lines-title">Invoice lines</h2>
+                <p>Each line stores item name, quantity, price, taxable value, and GST components at finalization time.</p>
+            </div>
+        </div>
+        <div class="om-table-scroll">
+            <table class="table table-hover align-middle om-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Unit Price</th>
+                        <th scope="col">Taxable</th>
+                        <th scope="col">GST Rate</th>
+                        <th scope="col">CGST</th>
+                        <th scope="col">SGST</th>
+                        <th scope="col">IGST</th>
+                        <th scope="col">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for line in invoice.lines.all %}
+                    <tr>
+                        <td>{{ line.description }}</td>
+                        <td>{{ line.quantity }}</td>
+                        <td>Rs. {{ line.unit_price }}</td>
+                        <td>Rs. {{ line.taxable_value }}</td>
+                        <td>{{ line.gst_rate }}%</td>
+                        <td>Rs. {{ line.cgst_amount }}</td>
+                        <td>Rs. {{ line.sgst_amount }}</td>
+                        <td>Rs. {{ line.igst_amount }}</td>
+                        <td>Rs. {{ line.line_total }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="invoice-orders-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="invoice-orders-title">Included order rounds</h2>
+                <p>The invoice is counted once financially, even when the session contains multiple order rounds.</p>
+            </div>
+        </div>
+        <div class="om-table-scroll">
+            <table class="table table-hover align-middle om-table">
+                <thead>
+                    <tr><th>Order</th><th>Created</th><th>Status</th><th>Stored Order Total</th></tr>
+                </thead>
+                <tbody>
+                {% for order in orders %}
+                    <tr>
+                        <td><a href="{% url 'dineva:owner-order-detail' order.id %}">#{{ order.id }}</a></td>
+                        <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ order.get_status_display }}</td>
+                        <td>Rs. {{ order.total_amount }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="om-panel" aria-labelledby="session-payment-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="session-payment-title">Session payment records</h2>
+                <p>Only successful session payments are counted as collected revenue.</p>
+            </div>
+        </div>
+        {% if payments %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Recorded By</th><th>Paid At</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>Rs. {{ payment.amount }}</td>
+                            <td>{{ payment.get_payment_method_display }}</td>
+                            <td>{{ payment.get_payment_status_display }}</td>
+                            <td>{{ payment.reference|default:"-" }}</td>
+                            <td>{{ payment.recorded_by.name|default:payment.recorded_by.username }}</td>
+                            <td>{% if payment.paid_at %}{{ payment.paid_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <h2>No session payments</h2>
+                <p>Waiter-recorded successful payments for this invoice will appear here.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="om-panel" aria-labelledby="bill-delivery-title">
+        <div class="om-form-section__header p-3">
+            <span class="om-form-section__icon"><i class="bi bi-send" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="bill-delivery-title">Bill delivery attempts</h2>
+                <p>Delivery failures do not alter payment status or table release.</p>
+            </div>
+        </div>
+        {% if delivery_attempts %}
+            <div class="om-table-scroll">
+                <table class="table table-hover align-middle om-table">
+                    <thead>
+                        <tr><th>Channel</th><th>Status</th><th>Destination</th><th>Message</th><th>Recorded</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for attempt in delivery_attempts %}
+                        <tr>
+                            <td>{{ attempt.get_channel_display }}</td>
+                            <td>{{ attempt.get_status_display }}</td>
+                            <td>{{ attempt.destination|default:"-" }}</td>
+                            <td>{{ attempt.error_message|default:attempt.provider_reference|default:"-" }}</td>
+                            <td>{{ attempt.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="om-empty-state">
+                <span class="om-empty-state__icon"><i class="bi bi-send" aria-hidden="true"></i></span>
+                <h2>No delivery attempts recorded</h2>
+                <p>Delivery records are created after session close attempts bill delivery.</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
